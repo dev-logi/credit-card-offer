@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Storage</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .success {
+            display: none;
+            background: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+        .info {
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Clear App Storage</h1>
+        <p>This will clear all stored data including your customer ID, allowing you to register fresh.</p>
+        
+        <div class="info">
+            <strong>What will be cleared:</strong><br>
+            • Customer ID<br>
+            • Customer Name<br>
+            • Customer Email<br>
+            • Cards Count<br>
+            • All cached data
+        </div>
+
+        <button onclick="clearAndReload()">
+            🗑️ Clear Storage & Reload
+        </button>
+
+        <div class="success" id="success">
+            ✅ Storage cleared! Redirecting to app...
+        </div>
+
+        <div class="info" style="margin-top: 2rem;">
+            <strong>Or use Console:</strong><br>
+            Open Console (F12) and run:<br>
+            <code class="code">localStorage.clear();</code>
+        </div>
+    </div>
+
+    <script>
+        function clearAndReload() {
+            // Clear localStorage
+            const keys = Object.keys(localStorage);
+            console.log('🔓 Clearing storage...');
+            console.log('Keys to clear:', keys);
+            
+            localStorage.clear();
+            
+            console.log('✅ Storage cleared');
+            console.log('Remaining keys:', Object.keys(localStorage));
+            
+            // Show success message
+            document.getElementById('success').style.display = 'block';
+            
+            // Redirect after 1 second
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        }
+
+        // Show current storage on load
+        window.onload = () => {
+            console.log('📦 Current localStorage:');
+            console.log({
+                customerId: localStorage.getItem('customerId'),
+                customerName: localStorage.getItem('customerName'),
+                customerEmail: localStorage.getItem('customerEmail'),
+                cardsCount: localStorage.getItem('cardsCount')
+            });
+        };
+    </script>
+</body>
+</html>
+
+
