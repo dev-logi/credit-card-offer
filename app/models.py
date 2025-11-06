@@ -24,7 +24,7 @@ class CreditCard(Base):
     __tablename__ = "credit_cards"
     
     id = Column(String, primary_key=True)
-    customer_id = Column(String, ForeignKey("customers.id"), nullable=False)
+    customer_id = Column(String, ForeignKey("customers.id"), nullable=True)  # NULL for template cards
     card_name = Column(String, nullable=False)
     issuer = Column(String, nullable=False)
     last_four = Column(String, nullable=False)
