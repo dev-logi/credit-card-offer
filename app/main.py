@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import customers, recommend
+from app.routers import customers, recommend, admin
 from app.config.settings import settings
 
 # Create FastAPI app
@@ -26,6 +26,7 @@ app.add_middleware(
 # Include routers
 app.include_router(customers.router)
 app.include_router(recommend.router)
+app.include_router(admin.router)
 
 
 @app.on_event("startup")

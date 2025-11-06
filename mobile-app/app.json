@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Smart Card Picker",
-    "slug": "credit-card-recommender",
+    "name": "TapWisely",
+    "slug": "tapwisely",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,19 +16,33 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.smartcardpicker.app"
+      "bundleIdentifier": "com.tapwisely.app",
+      "buildNumber": "1",
+      "deploymentTarget": "13.4",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app does not use the camera.",
+        "NSPhotoLibraryUsageDescription": "This app does not access your photo library.",
+        "NSLocationWhenInUseUsageDescription": "This app does not use your location."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.smartcardpicker.app"
+      "package": "com.tapwisely.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5e10710e-2de7-4324-a4ba-e27f4739a710"
+      }
+    },
+    "owner": "logi-dev"
   }
 }
-
-

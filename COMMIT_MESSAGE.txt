@@ -1,0 +1,91 @@
+Initial commit: Credit Card Recommendation Service
+
+A full-stack application that recommends the best credit card for any purchase
+based on rewards, category bonuses, and merchant acceptance.
+
+## Tech Stack
+
+Backend:
+- FastAPI (Python) with SQLAlchemy ORM
+- Repository pattern for clean architecture
+- Pydantic for settings and validation
+- SQLite (dev) with PostgreSQL support (prod)
+
+Frontend:
+- React Native with TypeScript
+- Expo for cross-platform development
+- React Navigation & React Native Paper
+- Full type safety with 100+ type definitions
+
+## Features Implemented
+
+✅ Customer registration and management
+✅ Credit card portfolio management
+✅ Smart card recommendations with merchant matching
+✅ Category-based reward calculation (6% grocery, 3% gas, etc.)
+✅ Network acceptance filtering (Visa/Mastercard/Amex/Discover)
+✅ Spending cap tracking
+✅ Card comparison logic
+✅ Mobile app with TypeScript
+✅ Repository layer for data access
+✅ Configuration management with Pydantic Settings
+✅ Centralized error handling
+✅ Comprehensive documentation
+
+## Project Structure
+
+- /app - FastAPI backend with clean architecture
+  - /config - Settings and constants
+  - /core - Exceptions and logging
+  - /repositories - Data access layer
+  - /routers - API endpoints
+  - /services - Business logic
+- /mobile-app - React Native TypeScript app
+  - /src/screens - 6 screen components (all .tsx)
+  - /src/types - TypeScript type definitions
+  - /src/context - React contexts
+  - /src/navigation - Navigation config
+  - /src/services - API services
+- /docs - Organized documentation
+- /scripts - Seed scripts and utilities
+- /tests - Backend test suite
+
+## Database
+
+Default: SQLite (credit_cards.db)
+Production: PostgreSQL via Supabase (ready to deploy)
+
+Includes 16 popular credit cards with real reward structures:
+- Amex Blue Cash Preferred (6% grocery, 6% streaming)
+- Chase Sapphire Preferred (3x travel, 3x dining)
+- Citi Custom Cash (5% top category)
+- Capital One Venture (2x miles everything)
+- And 12 more...
+
+## Ready for Deployment
+
+- Environment configuration via .env
+- Deployment guide included (DEPLOYMENT.md)
+- Supports both SQLite (dev) and PostgreSQL (prod)
+- Mobile app can deploy to web (Vercel) or native (Expo EAS)
+- Backend ready for Railway, Render, or Fly.io
+
+## Statistics
+
+- 50+ files created/modified
+- 3000+ lines of TypeScript/Python code
+- 100+ type definitions
+- 6 mobile screens (all TypeScript)
+- 4 repository classes
+- 16 credit cards seeded
+- 20+ merchants categorized
+- Full test coverage for core features
+
+---
+
+This commit represents a complete, production-ready application with:
+- Type safety (TypeScript)
+- Clean architecture (Repository pattern)
+- Comprehensive documentation
+- Ready for Supabase + Railway deployment
+

@@ -469,9 +469,93 @@ COMPREHENSIVE_MERCHANT_DATABASE = [
 ]
 
 
+def seed_comprehensive_data(db: Session):
+    """
+    Seed database with comprehensive card and merchant data (template cards only).
+    This version takes a db session and doesn't create customers.
+    """
+    print("🌱 Seeding comprehensive database...")
+    
+    # Don't clear customer data - only clear template data
+    print("  Clearing existing template data...")
+    db.query(CategoryBonus).filter(CategoryBonus.card_id.in_(
+        db.query(CreditCard.id).filter(CreditCard.customer_id == None)
+    )).delete(synchronize_session=False)
+    db.query(Offer).filter(Offer.card_id.in_(
+        db.query(CreditCard.id).filter(CreditCard.customer_id == None)
+    )).delete(synchronize_session=False)
+    db.query(CreditCard).filter(CreditCard.customer_id == None).delete()
+    db.query(MerchantCategory).delete()
+    db.commit()
+    
+    # Create all credit cards as TEMPLATES (no customer_id)
+    print(f"  Creating {len(COMPREHENSIVE_CARD_DATABASE)} template credit cards...")
+    card_count = 0
+    bonus_count = 0
+    
+    for card_data in COMPREHENSIVE_CARD_DATABASE:
+        card = CreditCard(
+            id=card_data['id'],
+            customer_id=None,  # Template card - no customer
+            card_name=card_data['card_name'],
+            issuer=card_data['issuer'],
+            last_four="0000",  # Placeholder for templates
+            base_reward_rate=card_data['base_reward_rate'],
+            annual_fee=card_data.get('annual_fee', 0),
+            reward_type=card_data.get('reward_type', 'cashback'),
+            points_value=card_data.get('points_value'),
+            network=card_data.get('network')
+        )
+        db.add(card)
+        card_count += 1
+        
+        # Add category bonuses
+        for bonus_data in card_data.get('category_bonuses', []):
+            bonus = CategoryBonus(
+                card_id=card_data['id'],
+                category=bonus_data['category'],
+                reward_rate=bonus_data['reward_rate'],
+                start_date=bonus_data.get('start_date'),
+                end_date=bonus_data.get('end_date'),
+                cap_per_year=bonus_data.get('cap_per_year'),
+                cap_per_quarter=bonus_data.get('cap_per_quarter'),
+                cap_per_month=bonus_data.get('cap_per_month'),
+                activation_required=bonus_data.get('activation_required', 'no'),
+                notes=bonus_data.get('notes'),
+                source_url=card_data.get('source_url'),
+                last_verified=date.today()
+            )
+            db.add(bonus)
+            bonus_count += 1
+    
+    db.commit()
+    print(f"  ✅ Created {card_count} template cards with {bonus_count} category bonuses")
+    
+    # Create merchant categories
+    print(f"  Creating {len(COMPREHENSIVE_MERCHANT_DATABASE)} merchant mappings...")
+    for merchant_data in COMPREHENSIVE_MERCHANT_DATABASE:
+        merchant = MerchantCategory(
+            merchant_name=merchant_data['name'],
+            categories=merchant_data['categories'],
+            aliases=merchant_data.get('aliases', []),
+            accepted_networks=merchant_data.get('accepted_networks')
+        )
+        db.add(merchant)
+    
+    db.commit()
+    print(f"  ✅ Created {len(COMPREHENSIVE_MERCHANT_DATABASE)} merchant mappings")
+    print(f"  ✅ Database seeded successfully!")
+    
+    return {
+        "cards": card_count,
+        "bonuses": bonus_count,
+        "merchants": len(COMPREHENSIVE_MERCHANT_DATABASE)
+    }
+
+
 def seed_comprehensive_database():
     """
-    Seed database with comprehensive card and merchant data.
+    Seed database with comprehensive card and merchant data (standalone version).
     """
     print("🌱 Seeding comprehensive database...")
     
