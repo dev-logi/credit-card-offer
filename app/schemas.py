@@ -110,6 +110,7 @@ class CardResponse(BaseModel):
     network: Optional[str] = None
     annual_fee: Optional[float] = None
     reward_type: Optional[str] = None
+    points_value: Optional[float] = None
     
     class Config:
         from_attributes = True
