@@ -75,6 +75,16 @@ def add_card_to_customer(
         CreditCard.customer_id.is_(None)  # Only match template cards (SQLAlchemy NULL check)
     ).first()
     
+    # Debug logging
+    print(f"🔍 Looking for template: name='{card.card_name}', issuer='{card.issuer}'")
+    if template_card:
+        print(f"✅ Template found: base_rate={template_card.base_reward_rate}, type={template_card.reward_type}, points={template_card.points_value}")
+    else:
+        print(f"❌ No template found!")
+        # Try to find any template with similar name
+        all_templates = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).all()
+        print(f"   Available templates: {[f'{t.card_name} ({t.issuer})' for t in all_templates[:5]]}")
+    
     # Create the card with template data if available
     db_card = CreditCard(
         id=card.id,
