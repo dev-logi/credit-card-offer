@@ -132,16 +132,22 @@ class RecommendationEngine:
         1. Merchant-specific offers
         2. Category bonuses
         3. Base reward rate
+        
+        For points/miles cards, effective value = rate × points_value
         """
+        # Get effective multiplier for points/miles cards
+        points_multiplier = card.points_value if card.points_value else 1.0
+        
         # Priority 1: Check for merchant-specific offers
         merchant_offer = self._find_merchant_offer(card, merchant_name, transaction_date)
         if merchant_offer:
             total_rate = card.base_reward_rate + merchant_offer.bonus_rate
-            reward_value = purchase_amount * (total_rate / 100)
-            reason = f"{total_rate}% via {merchant_offer.description}"
+            effective_rate = total_rate * points_multiplier
+            reward_value = purchase_amount * (effective_rate / 100)
+            reason = self._format_reward_reason(total_rate, card.reward_type, None, merchant_offer.description)
             return CardScore(
                 card=card,
-                reward_rate=total_rate,
+                reward_rate=effective_rate,
                 reward_value=reward_value,
                 reason=reason,
                 categories_matched=categories
@@ -158,22 +164,24 @@ class RecommendationEngine:
                 matching_category = category
         
         if matching_category:
-            reward_value = purchase_amount * (best_category_rate / 100)
-            reason = f"{best_category_rate}% on {matching_category} purchases"
+            effective_rate = best_category_rate * points_multiplier
+            reward_value = purchase_amount * (effective_rate / 100)
+            reason = self._format_reward_reason(best_category_rate, card.reward_type, matching_category)
             return CardScore(
                 card=card,
-                reward_rate=best_category_rate,
+                reward_rate=effective_rate,
                 reward_value=reward_value,
                 reason=reason,
                 categories_matched=[matching_category]
             )
         
         # Priority 3: Base reward rate
-        reward_value = purchase_amount * (card.base_reward_rate / 100)
-        reason = f"{card.base_reward_rate}% base cashback on all purchases"
+        effective_rate = card.base_reward_rate * points_multiplier
+        reward_value = purchase_amount * (effective_rate / 100)
+        reason = self._format_reward_reason(card.base_reward_rate, card.reward_type, None)
         return CardScore(
             card=card,
-            reward_rate=card.base_reward_rate,
+            reward_rate=effective_rate,
             reward_value=reward_value,
             reason=reason,
             categories_matched=categories
@@ -219,12 +227,47 @@ class RecommendationEngine:
         
         return best_bonus
     
+    def _format_reward_reason(
+        self, 
+        rate: float, 
+        reward_type: str, 
+        category: Optional[str] = None,
+        special_offer: Optional[str] = None
+    ) -> str:
+        """
+        Format reward reason based on card type and earning category.
+        
+        Args:
+            rate: The earning rate (e.g., 2.0 for 2x)
+            reward_type: 'cashback', 'points', or 'miles'
+            category: Optional category name (e.g., 'grocery', 'travel')
+            special_offer: Optional special offer description
+        
+        Returns:
+            Formatted reason string
+        """
+        # Format the rate based on reward type
+        if reward_type == 'cashback':
+            rate_text = f"{rate}%"
+        elif reward_type in ('points', 'miles'):
+            rate_text = f"{rate}x {reward_type}"
+        else:
+            rate_text = f"{rate}%"
+        
+        # Build the reason
+        if special_offer:
+            return f"{rate_text} via {special_offer}"
+        elif category:
+            return f"{rate_text} on {category} purchases"
+        else:
+            return f"{rate_text} on all purchases"
+    
     def _format_reward_details(self, reward_value: float, reward_rate: float, purchase_amount: Optional[float]) -> str:
         """Format reward details as readable string."""
         if purchase_amount:
-            return f"${reward_value:.2f} cashback ({reward_rate}% rewards)"
+            return f"${reward_value:.2f} value ({reward_rate}% effective rewards)"
         else:
-            return f"{reward_rate}% rewards on this purchase"
+            return f"{reward_rate}% effective rewards on this purchase"
     
     def _generate_comparison(
         self, 

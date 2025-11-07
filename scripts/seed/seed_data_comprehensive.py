@@ -275,6 +275,7 @@ COMPREHENSIVE_CARD_DATABASE = [
         "annual_fee": 95,
         "base_reward_rate": 2.0,
         "reward_type": "miles",
+        "points_value": 1.0,  # Capital One miles worth 1 cent each
         "network": "visa",
         "category_bonuses": [
             {"category": "travel", "reward_rate": 5.0, 
@@ -290,6 +291,7 @@ COMPREHENSIVE_CARD_DATABASE = [
         "annual_fee": 395,
         "base_reward_rate": 2.0,
         "reward_type": "miles",
+        "points_value": 1.0,  # Capital One miles worth 1 cent each
         "network": "visa",
         "category_bonuses": [
             {"category": "travel", "reward_rate": 10.0, 
@@ -308,6 +310,7 @@ COMPREHENSIVE_CARD_DATABASE = [
         "annual_fee": 0,
         "base_reward_rate": 1.25,
         "reward_type": "miles",
+        "points_value": 1.0,  # Capital One miles worth 1 cent each
         "network": "visa",
         "category_bonuses": [],  # Flat rate
         "source_url": "https://www.capitalone.com/credit-cards/ventureone-rewards/"

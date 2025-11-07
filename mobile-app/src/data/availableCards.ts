@@ -81,14 +81,14 @@ export const AVAILABLE_CARDS: AvailableCard[] = [
   },
   {
     id: 'capital_one_venture',
-    name: 'Capital One Venture',
+    name: 'Capital One Venture Rewards',
     issuer: 'Capital One',
     network: 'visa',
     description: '2x miles on everything',
   },
   {
     id: 'capital_one_venture_x',
-    name: 'Capital One Venture X',
+    name: 'Capital One Venture X Rewards',
     issuer: 'Capital One',
     network: 'visa',
     description: '10x travel, 2x everything',
