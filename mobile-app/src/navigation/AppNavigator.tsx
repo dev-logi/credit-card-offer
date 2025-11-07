@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Import screens
 import WelcomeScreen from '../screens/WelcomeScreen';
+import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import SelectCardsScreen from '../screens/SelectCardsScreen';
 import RecommendScreen from '../screens/RecommendScreen';
@@ -79,6 +80,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({ forceUpdate }) => {
         {!isRegistered ? (
           <>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="SelectCards" component={SelectCardsScreen} />
           </>

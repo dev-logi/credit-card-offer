@@ -32,6 +32,11 @@ export const apiService = {
     return response.data;
   },
 
+  getCustomerByEmail: async (email: string): Promise<Customer> => {
+    const response = await api.get<Customer>(`/customers/by-email/${encodeURIComponent(email)}`);
+    return response.data;
+  },
+
   // Card APIs
   getCustomerCards: async (customerId: string): Promise<CreditCard[]> => {
     const response = await api.get<CreditCard[]>(`/customers/${customerId}/cards`);

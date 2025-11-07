@@ -67,6 +67,14 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
         >
           Get Started
         </Button>
+        <Button 
+          mode="outlined" 
+          onPress={() => navigation.navigate('Login')}
+          style={[styles.button, styles.loginButton]}
+          contentStyle={styles.buttonContent}
+        >
+          Sign In
+        </Button>
       </View>
     </SafeAreaView>
   );
@@ -124,6 +132,10 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 12,
+    marginBottom: 12,
+  },
+  loginButton: {
+    marginBottom: 0,
   },
   buttonContent: {
     paddingVertical: 8,

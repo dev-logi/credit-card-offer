@@ -43,6 +43,15 @@ def get_customer(customer_id: str, db: Session = Depends(get_db)):
     return customer
 
 
+@router.get("/by-email/{email}", response_model=CustomerResponse)
+def get_customer_by_email(email: str, db: Session = Depends(get_db)):
+    """Get customer by email address."""
+    customer = db.query(Customer).filter(Customer.email == email).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found with this email")
+    return customer
+
+
 @router.get("/{customer_id}/cards", response_model=List[CardResponse])
 def get_customer_cards(customer_id: str, db: Session = Depends(get_db)):
     """Get all cards for a customer."""

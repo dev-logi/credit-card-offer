@@ -5,6 +5,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 // Root Stack Navigator Params
 export type RootStackParamList = {
   Welcome: undefined;
+  Login: undefined;
   Register: undefined;
   SelectCards: {
     customerId: string;
