@@ -90,3 +90,50 @@ def get_template_cards(db: Session = Depends(get_db)):
         "category_bonuses_count": len(card.category_bonuses) if card.category_bonuses else 0
     } for card in template_cards]
 
+
+@router.delete("/clear-customer-data")
+def clear_customer_data(db: Session = Depends(get_db)):
+    """
+    Clear all customer data (customers and their cards).
+    Template cards and merchants are preserved.
+    WARNING: This should be protected in production!
+    """
+    from app.models import Customer, Offer
+    
+    try:
+        # Delete customer cards and their associated bonuses/offers
+        customer_cards = db.query(CreditCard).filter(CreditCard.customer_id.isnot(None)).all()
+        customer_card_ids = [card.id for card in customer_cards]
+        
+        # Delete category bonuses for customer cards
+        if customer_card_ids:
+            db.query(CategoryBonus).filter(CategoryBonus.card_id.in_(customer_card_ids)).delete(synchronize_session=False)
+            
+            # Delete offers for customer cards
+            db.query(Offer).filter(Offer.card_id.in_(customer_card_ids)).delete(synchronize_session=False)
+            
+            # Delete customer cards
+            db.query(CreditCard).filter(CreditCard.customer_id.isnot(None)).delete(synchronize_session=False)
+        
+        # Delete customers
+        customer_count = db.query(Customer).count()
+        db.query(Customer).delete(synchronize_session=False)
+        
+        db.commit()
+        
+        # Get stats
+        template_cards = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).count()
+        merchants = db.query(MerchantCategory).count()
+        
+        return {
+            "status": "success",
+            "message": f"Cleared {customer_count} customers and {len(customer_card_ids)} customer cards",
+            "remaining": {
+                "template_cards": template_cards,
+                "merchants": merchants
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to clear data: {str(e)}")
+
