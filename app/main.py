@@ -31,9 +31,29 @@ app.include_router(admin.router)
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize database on startup."""
+    """Initialize database on startup and auto-seed if empty."""
+    from app.database import SessionLocal, get_db
+    from app.models import CreditCard
+    from scripts.seed.seed_data_comprehensive import seed_comprehensive_data
+    
+    # Initialize database tables
     init_db()
-    print("✅ Database initialized")
+    print("✅ Database tables initialized")
+    
+    # Auto-seed if database is empty (important for ephemeral containers like Railway)
+    db = SessionLocal()
+    try:
+        template_count = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).count()
+        if template_count == 0:
+            print("📊 Database is empty, auto-seeding...")
+            seed_comprehensive_data(db)
+            print("✅ Auto-seed completed")
+        else:
+            print(f"✅ Database already has {template_count} template cards")
+    except Exception as e:
+        print(f"⚠️  Auto-seed failed: {e}")
+    finally:
+        db.close()
 
 
 @app.get("/")
