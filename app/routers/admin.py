@@ -73,3 +73,20 @@ def get_database_stats(db: Session = Depends(get_db)):
         "offers": offers
     }
 
+
+@router.get("/template-cards")
+def get_template_cards(db: Session = Depends(get_db)):
+    """Get all template cards for debugging."""
+    template_cards = db.query(CreditCard).filter(CreditCard.customer_id == None).all()
+    return [{
+        "id": card.id,
+        "card_name": card.card_name,
+        "issuer": card.issuer,
+        "base_reward_rate": card.base_reward_rate,
+        "reward_type": card.reward_type,
+        "points_value": card.points_value,
+        "network": card.network,
+        "annual_fee": card.annual_fee,
+        "category_bonuses_count": len(card.category_bonuses) if card.category_bonuses else 0
+    } for card in template_cards]
+
