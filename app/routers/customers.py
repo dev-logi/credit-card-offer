@@ -72,7 +72,7 @@ def add_card_to_customer(
     template_card = db.query(CreditCard).filter(
         CreditCard.card_name == card.card_name,
         CreditCard.issuer == card.issuer,
-        CreditCard.customer_id == None  # Only match template cards, not customer cards
+        CreditCard.customer_id.is_(None)  # Only match template cards (SQLAlchemy NULL check)
     ).first()
     
     # Create the card with template data if available

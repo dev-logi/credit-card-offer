@@ -16,7 +16,7 @@ def seed_database(db: Session = Depends(get_db)):
     WARNING: This should be protected in production!
     """
     # Check if already seeded
-    existing_cards = db.query(CreditCard).filter(CreditCard.customer_id == None).count()
+    existing_cards = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).count()
     if existing_cards > 0:
         return {
             "status": "already_seeded",
@@ -36,7 +36,7 @@ def seed_database(db: Session = Depends(get_db)):
         seed_comprehensive_data(db)
         
         # Count what was seeded
-        template_cards = db.query(CreditCard).filter(CreditCard.customer_id == None).count()
+        template_cards = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).count()
         category_bonuses = db.query(CategoryBonus).count()
         merchants = db.query(MerchantCategory).count()
         
@@ -57,8 +57,8 @@ def get_database_stats(db: Session = Depends(get_db)):
     """Get current database statistics."""
     from app.models import Customer, Offer
     
-    template_cards = db.query(CreditCard).filter(CreditCard.customer_id == None).count()
-    customer_cards = db.query(CreditCard).filter(CreditCard.customer_id != None).count()
+    template_cards = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).count()
+    customer_cards = db.query(CreditCard).filter(CreditCard.customer_id.isnot(None)).count()
     customers = db.query(Customer).count()
     category_bonuses = db.query(CategoryBonus).count()
     merchants = db.query(MerchantCategory).count()
@@ -77,7 +77,7 @@ def get_database_stats(db: Session = Depends(get_db)):
 @router.get("/template-cards")
 def get_template_cards(db: Session = Depends(get_db)):
     """Get all template cards for debugging."""
-    template_cards = db.query(CreditCard).filter(CreditCard.customer_id == None).all()
+    template_cards = db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).all()
     return [{
         "id": card.id,
         "card_name": card.card_name,

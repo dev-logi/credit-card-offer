@@ -482,12 +482,12 @@ def seed_comprehensive_data(db: Session):
     # Don't clear customer data - only clear template data
     print("  Clearing existing template data...")
     db.query(CategoryBonus).filter(CategoryBonus.card_id.in_(
-        db.query(CreditCard.id).filter(CreditCard.customer_id == None)
+        db.query(CreditCard.id).filter(CreditCard.customer_id.is_(None))
     )).delete(synchronize_session=False)
     db.query(Offer).filter(Offer.card_id.in_(
-        db.query(CreditCard.id).filter(CreditCard.customer_id == None)
+        db.query(CreditCard.id).filter(CreditCard.customer_id.is_(None))
     )).delete(synchronize_session=False)
-    db.query(CreditCard).filter(CreditCard.customer_id == None).delete()
+    db.query(CreditCard).filter(CreditCard.customer_id.is_(None)).delete()
     db.query(MerchantCategory).delete()
     db.commit()
     
