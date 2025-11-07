@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity, Animated } from 'react-native';
 import { Text, Card, FAB, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Swipeable } from 'react-native-gesture-handler';
 import { apiService } from '../services/api.service';
 import { AVAILABLE_CARDS, getCardById } from '../data/availableCards';
 import { MainTabsParamList, CreditCard, AvailableCard } from '../types';
@@ -72,6 +73,73 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
     return '#666';
   };
 
+  const handleDeleteCard = async (card: CreditCard) => {
+    Alert.alert(
+      'Delete Card',
+      `Are you sure you want to remove ${card.card_name} from your wallet?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const customerId = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_ID);
+              if (customerId) {
+                await apiService.deleteCard(customerId, card.id);
+                
+                // Update card count in AsyncStorage
+                const updatedCards = cards.filter(c => c.id !== card.id);
+                await AsyncStorage.setItem('cardCount', updatedCards.length.toString());
+                
+                // Update local state
+                setCards(updatedCards);
+                
+                Alert.alert('Success', 'Card removed from your wallet');
+              }
+            } catch (error) {
+              console.error('Error deleting card:', error);
+              Alert.alert('Error', 'Failed to delete card. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (card: CreditCard) => (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const trans = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [0, 100],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteCard(card)}
+      >
+        <Animated.View
+          style={[
+            styles.deleteButtonContent,
+            {
+              transform: [{ translateX: trans }],
+            },
+          ]}
+        >
+          <Text style={styles.deleteButtonText}>🗑️</Text>
+          <Text style={styles.deleteButtonLabel}>Delete</Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -106,37 +174,43 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
               const cardInfo = getCardDetails(card.card_name);
               
               return (
-                <Card key={card.id} style={styles.card}>
-                  <View style={[styles.cardAccent, { backgroundColor: cardColor }]} />
-                  <Card.Content>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.cardIcon}>💳</Text>
-                      <View style={styles.cardInfo}>
-                        <Text variant="titleMedium" style={styles.cardName}>
-                          {card.card_name}
-                        </Text>
-                        <Text variant="bodySmall" style={styles.issuer}>
-                          {card.issuer}
-                        </Text>
+                <Swipeable
+                  key={card.id}
+                  renderRightActions={renderRightActions(card)}
+                  overshootRight={false}
+                >
+                  <Card style={styles.card}>
+                    <View style={[styles.cardAccent, { backgroundColor: cardColor }]} />
+                    <Card.Content>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardIcon}>💳</Text>
+                        <View style={styles.cardInfo}>
+                          <Text variant="titleMedium" style={styles.cardName}>
+                            {card.card_name}
+                          </Text>
+                          <Text variant="bodySmall" style={styles.issuer}>
+                            {card.issuer}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
 
-                    <View style={styles.cardDetails}>
-                      <Chip icon="credit-card" compact style={styles.chip}>
-                        •••• {card.last_four}
-                      </Chip>
-                      <Chip icon="percent" compact style={styles.chip}>
-                        {card.base_reward_rate}% base rewards
-                      </Chip>
-                    </View>
+                      <View style={styles.cardDetails}>
+                        <Chip icon="credit-card" compact style={styles.chip}>
+                          •••• {card.last_four}
+                        </Chip>
+                        <Chip icon="percent" compact style={styles.chip}>
+                          {card.base_reward_rate}% base rewards
+                        </Chip>
+                      </View>
 
-                    {cardInfo?.description && (
-                      <Text variant="bodySmall" style={styles.highlights}>
-                        🎯 {cardInfo.description}
-                      </Text>
-                    )}
-                  </Card.Content>
-                </Card>
+                      {cardInfo?.description && (
+                        <Text variant="bodySmall" style={styles.highlights}>
+                          🎯 {cardInfo.description}
+                        </Text>
+                      )}
+                    </Card.Content>
+                  </Card>
+                </Swipeable>
               );
             })}
           </View>
@@ -246,6 +320,28 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 16,
+  },
+  deleteButton: {
+    backgroundColor: '#d32f2f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  deleteButtonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  deleteButtonText: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  deleteButtonLabel: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

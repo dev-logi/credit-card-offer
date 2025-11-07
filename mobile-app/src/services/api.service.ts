@@ -48,6 +48,11 @@ export const apiService = {
     return response.data;
   },
 
+  deleteCard: async (customerId: string, cardId: string): Promise<{ message: string; card_id: string }> => {
+    const response = await api.delete<{ message: string; card_id: string }>(`/customers/${customerId}/cards/${cardId}`);
+    return response.data;
+  },
+
   // Recommendation API
   getRecommendation: async (requestData: RecommendationRequest): Promise<RecommendationResponse> => {
     const response = await api.post<RecommendationResponse>('/recommend/', requestData);

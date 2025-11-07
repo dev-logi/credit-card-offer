@@ -147,6 +147,34 @@ def add_card_to_customer(
     return db_card
 
 
+@router.delete("/{customer_id}/cards/{card_id}", status_code=200)
+def delete_card(customer_id: str, card_id: str, db: Session = Depends(get_db)):
+    """Delete a credit card from customer's wallet."""
+    # Verify customer exists
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Find the card
+    card = db.query(CreditCard).filter(
+        CreditCard.id == card_id,
+        CreditCard.customer_id == customer_id
+    ).first()
+    
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    # Delete associated category bonuses and offers (cascade should handle this, but being explicit)
+    db.query(CategoryBonus).filter(CategoryBonus.card_id == card_id).delete()
+    db.query(Offer).filter(Offer.card_id == card_id).delete()
+    
+    # Delete the card
+    db.delete(card)
+    db.commit()
+    
+    return {"message": "Card deleted successfully", "card_id": card_id}
+
+
 @router.post("/{customer_id}/cards/{card_id}/bonuses", status_code=201)
 def add_category_bonus(
     customer_id: str,
