@@ -71,7 +71,8 @@ def add_card_to_customer(
     # Look for a template card with the same name (from seeded data)
     template_card = db.query(CreditCard).filter(
         CreditCard.card_name == card.card_name,
-        CreditCard.issuer == card.issuer
+        CreditCard.issuer == card.issuer,
+        CreditCard.customer_id == None  # Only match template cards, not customer cards
     ).first()
     
     # Create the card with template data if available
