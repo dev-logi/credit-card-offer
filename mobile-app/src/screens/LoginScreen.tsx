@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { apiService } from '../services/api.service';
+import { supabase } from '../services/supabase.service';
 import { useAuth } from '../hooks/useAuth';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -16,7 +17,9 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { handleRegistrationComplete } = useAuth();
 
   const handleLogin = async () => {
@@ -25,18 +28,38 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       return;
     }
 
+    if (!password.trim()) {
+      Alert.alert('Error', 'Please enter your password');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Lookup customer by email
-      const customer = await apiService.getCustomerByEmail(email.toLowerCase().trim());
+      // 1. Sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: password,
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      if (!authData.user) {
+        throw new Error('Failed to log in');
+      }
+
+      // 2. Get customer ID from Supabase user
+      const customerId = authData.user.id;
+      const userName = authData.user.user_metadata?.name || 'User';
       
-      // Store customer info
-      await AsyncStorage.setItem('customerId', customer.id);
-      await AsyncStorage.setItem('userName', customer.name);
-      await AsyncStorage.setItem('userEmail', customer.email);
+      // 3. Store customer info
+      await AsyncStorage.setItem('customerId', customerId);
+      await AsyncStorage.setItem('userName', userName);
+      await AsyncStorage.setItem('userEmail', authData.user.email || email.trim().toLowerCase());
       
-      // Check if customer has cards
-      const cards = await apiService.getCustomerCards(customer.id);
+      // 4. Check if customer has cards
+      const cards = await apiService.getCustomerCards(customerId);
       
       if (cards.length === 0) {
         // Customer exists but has no cards, send to card selection
@@ -45,30 +68,29 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           'Please add your credit cards to get started.',
           [{ text: 'OK' }]
         );
-        navigation.navigate('SelectCards', { customerId: customer.id, isFirstTime: true });
+        navigation.navigate('SelectCards', { customerId, isFirstTime: true });
       } else {
         // Customer has cards, complete login
         await AsyncStorage.setItem('cardCount', cards.length.toString());
-        Alert.alert('Welcome Back!', `Logged in as ${customer.name}`);
+        Alert.alert('Welcome Back!', `Logged in as ${userName}`);
         handleRegistrationComplete?.();
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      if (error.response?.status === 404) {
-        Alert.alert(
-          'Account Not Found',
-          'No account found with this email. Please register first.',
-          [
-            { text: 'Register', onPress: () => navigation.navigate('Register') },
-            { text: 'Try Again', style: 'cancel' }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Login Failed',
-          error.response?.data?.detail || 'Unable to log in. Please check your internet connection and try again.'
-        );
+      let errorMessage = 'Unable to log in. Please check your internet connection and try again.';
+      
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Please check your email and confirm your account before logging in.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      Alert.alert('Login Failed', errorMessage, [
+        { text: 'Try Again', style: 'cancel' },
+        { text: 'Register', onPress: () => navigation.navigate('Register') }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -95,6 +117,22 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
+          style={styles.input}
+          disabled={loading}
+        />
+
+        <TextInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          mode="outlined"
+          secureTextEntry={!showPassword}
+          right={
+            <TextInput.Icon
+              icon={showPassword ? 'eye-off' : 'eye'}
+              onPress={() => setShowPassword(!showPassword)}
+            />
+          }
           style={styles.input}
           disabled={loading}
         />
