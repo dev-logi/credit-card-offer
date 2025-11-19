@@ -9,6 +9,10 @@
 *.sqlite
 *.sqlite3
 
+# Database backups
+backups/
+*.backup
+
 # Python
 __pycache__/
 *.py[cod]
