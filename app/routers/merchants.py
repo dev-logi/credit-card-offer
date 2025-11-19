@@ -16,6 +16,7 @@ def get_nearby_merchants(
     lng: float = Query(..., description="Longitude"),
     radius: Optional[int] = Query(None, description="Search radius in meters (default: 5000)"),
     limit: Optional[int] = Query(None, description="Maximum number of results (default: 20)"),
+    query: Optional[str] = Query(None, description="Search query to filter places by name"),
 ):
     """
     Get nearby merchants based on user's location.
@@ -57,7 +58,8 @@ def get_nearby_merchants(
             lat=lat,
             lng=lng,
             radius=search_radius,
-            limit=result_limit
+            limit=result_limit,
+            query=query
         )
         
         # Transform to response format

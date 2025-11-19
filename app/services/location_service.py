@@ -16,7 +16,8 @@ class LocationService(ABC):
         lng: float,
         radius: int = 5000,
         categories: Optional[List[str]] = None,
-        limit: int = 20
+        limit: int = 20,
+        query: Optional[str] = None
     ) -> List[Dict]:
         """
         Get nearby places based on coordinates.
@@ -127,7 +128,8 @@ class FoursquareLocationService(LocationService):
         lng: float,
         radius: int = 5000,
         categories: Optional[List[str]] = None,
-        limit: int = 20
+        limit: int = 20,
+        query: Optional[str] = None
     ) -> List[Dict]:
         """
         Get nearby places from Foursquare API.
@@ -138,6 +140,7 @@ class FoursquareLocationService(LocationService):
             radius: Search radius in meters (default: 5000)
             categories: List of category filters (optional)
             limit: Maximum number of results (default: 20)
+            query: Search query to filter places by name (optional)
             
         Returns:
             List of place dictionaries
@@ -154,6 +157,10 @@ class FoursquareLocationService(LocationService):
                 "radius": radius,
                 "limit": limit,
             }
+            
+            # Add search query if provided
+            if query and query.strip():
+                params["query"] = query.strip()
             
             # Add category filters if provided
             if categories:
