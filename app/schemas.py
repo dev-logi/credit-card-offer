@@ -1,6 +1,6 @@
 """Pydantic schemas for request/response validation."""
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, validator
 from datetime import date
 
@@ -114,5 +114,20 @@ class CardResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class NearbyMerchant(BaseModel):
+    """Nearby merchant information."""
+    name: str
+    category: str
+    icon: str
+    distance: float  # in meters
+    address: Optional[str] = None
+
+
+class NearbyMerchantsResponse(BaseModel):
+    """Response containing nearby merchants."""
+    merchants: List[NearbyMerchant]
+    location: Optional[Dict[str, float]] = None  # {lat, lng}
 
 

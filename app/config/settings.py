@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     DEFAULT_TOP_N: int = 3
     DEFAULT_REFERENCE_AMOUNT: float = 100.0
     
+    # Foursquare Places API
+    FOURSQUARE_API_KEY: str = ""
+    FOURSQUARE_DEFAULT_RADIUS: int = 5000  # meters
+    FOURSQUARE_DEFAULT_LIMIT: int = 20
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

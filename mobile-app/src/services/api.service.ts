@@ -7,6 +7,7 @@ import {
   RecommendationRequest,
   RecommendationResponse,
   HealthCheckResponse,
+  NearbyMerchantsResponse,
 } from '../types';
 
 // Production API URL
@@ -62,6 +63,20 @@ export const apiService = {
   // Health check
   healthCheck: async (): Promise<HealthCheckResponse> => {
     const response = await api.get<HealthCheckResponse>('/health');
+    return response.data;
+  },
+
+  // Nearby merchants API
+  getNearbyMerchants: async (
+    lat: number,
+    lng: number,
+    radius?: number
+  ): Promise<NearbyMerchantsResponse> => {
+    const params: any = { lat, lng };
+    if (radius) {
+      params.radius = radius;
+    }
+    const response = await api.get<NearbyMerchantsResponse>('/merchants/nearby', { params });
     return response.data;
   },
 };

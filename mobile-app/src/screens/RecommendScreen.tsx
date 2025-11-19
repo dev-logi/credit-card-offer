@@ -4,7 +4,8 @@ import { Text, TextInput, Button, Card, Chip, ActivityIndicator } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api.service';
-import { RecommendationResponse } from '../types';
+import { getCurrentLocation } from '../services/location.service';
+import { RecommendationResponse, NearbyMerchant } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
 
 interface PopularStore {
@@ -40,9 +41,12 @@ export default function RecommendScreen() {
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [customerName, setCustomerName] = useState('');
+  const [nearbyStores, setNearbyStores] = useState<PopularStore[]>([]);
+  const [loadingNearby, setLoadingNearby] = useState(false);
 
   useEffect(() => {
     loadCustomerInfo();
+    loadNearbyStores();
   }, []);
 
   const loadCustomerInfo = async () => {
@@ -51,6 +55,40 @@ export default function RecommendScreen() {
       setCustomerName(name || '');
     } catch (error) {
       console.error('Error loading customer info:', error);
+    }
+  };
+
+  const loadNearbyStores = async () => {
+    setLoadingNearby(true);
+    try {
+      // Get user's current location
+      const location = await getCurrentLocation();
+      
+      if (location) {
+        // Fetch nearby merchants from API
+        const response = await apiService.getNearbyMerchants(
+          location.latitude,
+          location.longitude,
+          5000 // 5km radius
+        );
+        
+        if (response.merchants && response.merchants.length > 0) {
+          // Transform API response to PopularStore format
+          const stores: PopularStore[] = response.merchants.map((merchant: NearbyMerchant) => ({
+            name: merchant.name,
+            icon: merchant.icon,
+            category: merchant.category.charAt(0).toUpperCase() + merchant.category.slice(1),
+          }));
+          setNearbyStores(stores);
+        }
+      }
+      // If location unavailable or no merchants found, fallback to POPULAR_STORES
+      // (handled in render)
+    } catch (error) {
+      console.error('Error loading nearby stores:', error);
+      // Fallback to POPULAR_STORES on error
+    } finally {
+      setLoadingNearby(false);
     }
   };
 
@@ -171,11 +209,31 @@ export default function RecommendScreen() {
 
         {!recommendation && !loading && (
           <>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              Popular Stores
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                {nearbyStores.length > 0 ? 'Nearby Stores' : 'Popular Stores'}
+              </Text>
+              {nearbyStores.length > 0 && (
+                <Button
+                  mode="text"
+                  onPress={loadNearbyStores}
+                  disabled={loadingNearby}
+                  compact
+                >
+                  {loadingNearby ? 'Loading...' : 'Refresh'}
+                </Button>
+              )}
+            </View>
+            {loadingNearby && nearbyStores.length === 0 && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" />
+                <Text variant="bodySmall" style={styles.loadingText}>
+                  Finding nearby stores...
+                </Text>
+              </View>
+            )}
             <View style={styles.quickSelectGrid}>
-              {POPULAR_STORES.map((store) => (
+              {(nearbyStores.length > 0 ? nearbyStores : POPULAR_STORES).map((store) => (
                 <TouchableOpacity
                   key={store.name}
                   onPress={() => handleQuickSelect(store.name)}
@@ -325,8 +383,13 @@ const styles = StyleSheet.create({
   findButtonContent: {
     paddingVertical: 8,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  sectionTitle: {
     fontWeight: 'bold',
   },
   quickSelectGrid: {
