@@ -4,7 +4,7 @@ import { Text, TextInput, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, CreditCard } from '../types';
 import { apiService } from '../services/api.service';
 import { supabase } from '../services/supabase.service';
 import { useAuth } from '../hooks/useAuth';
@@ -52,14 +52,46 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       // 2. Get customer ID from Supabase user
       const customerId = authData.user.id;
       const userName = authData.user.user_metadata?.name || 'User';
+      const userEmail = authData.user.email || email.trim().toLowerCase();
       
       // 3. Store customer info
       await AsyncStorage.setItem('customerId', customerId);
       await AsyncStorage.setItem('userName', userName);
-      await AsyncStorage.setItem('userEmail', authData.user.email || email.trim().toLowerCase());
+      await AsyncStorage.setItem('userEmail', userEmail);
       
-      // 4. Check if customer has cards
-      const cards = await apiService.getCustomerCards(customerId);
+      // 4. Check if customer exists in backend and has cards
+      let cards: CreditCard[] = [];
+      try {
+        cards = await apiService.getCustomerCards(customerId);
+      } catch (cardError: any) {
+        // If customer doesn't exist (404), create it automatically
+        if (cardError.response?.status === 404) {
+          console.log('Customer not found in backend, creating customer record...');
+          try {
+            // Create customer record in backend using Supabase user info
+            await apiService.createCustomer({
+              id: customerId,
+              name: userName,
+              email: userEmail,
+            });
+            console.log('Customer record created successfully');
+            // Retry fetching cards (should return empty array now)
+            cards = await apiService.getCustomerCards(customerId);
+          } catch (createError: any) {
+            // If customer creation fails with 400, it might already exist (race condition)
+            if (createError.response?.status === 400 && createError.response?.data?.detail?.includes('already exists')) {
+              console.log('Customer already exists (race condition), retrying card fetch...');
+              cards = await apiService.getCustomerCards(customerId);
+            } else {
+              // Other errors during customer creation
+              throw new Error(`Failed to create customer record: ${createError.response?.data?.detail || createError.message}`);
+            }
+          }
+        } else {
+          // Re-throw other errors (network issues, etc.)
+          throw cardError;
+        }
+      }
       
       if (cards.length === 0) {
         // Customer exists but has no cards, send to card selection
