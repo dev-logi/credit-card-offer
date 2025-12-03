@@ -15,3 +15,6 @@ gunicorn==21.2.0
 # Testing (optional for deployment)
 pytest==8.3.0
 httpx==0.27.0
+
+# HTTP Requests
+requests>=2.31.0

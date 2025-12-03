@@ -90,3 +90,24 @@ tmp/
 # OS
 Thumbs.db
 .DS_Store
+
+# iOS Build Artifacts
+*.ipa
+builds/
+mobile-app/*.ipa
+mobile-app/build-*.ipa
+mobile-app/TapWisely-*.ipa
+mobile-app/*-build*.ipa
+
+# iOS/Xcode
+*.xcworkspace
+!mobile-app/ios/TapWisely.xcworkspace
+*.xcuserdata
+*.xcuserstate
+project.xcworkspace
+xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM

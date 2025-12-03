@@ -95,3 +95,19 @@ export interface ApiError {
   detail: string;
 }
 
+export interface NearbyMerchant {
+  name: string;
+  category: string;
+  icon: string;
+  distance: number; // in meters
+  address?: string;
+}
+
+export interface NearbyMerchantsResponse {
+  merchants: NearbyMerchant[];
+  location?: {
+    lat: number;
+    lng: number;
+  };
+}
+

@@ -4,7 +4,8 @@ import { Text, TextInput, Button, Card, Chip, ActivityIndicator } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api.service';
-import { RecommendationResponse } from '../types';
+import { getCurrentLocation } from '../services/location.service';
+import { RecommendationResponse, NearbyMerchant } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
 
 interface PopularStore {
@@ -40,9 +41,14 @@ export default function RecommendScreen() {
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [customerName, setCustomerName] = useState('');
+  const [nearbyStores, setNearbyStores] = useState<PopularStore[]>([]);
+  const [loadingNearby, setLoadingNearby] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     loadCustomerInfo();
+    loadNearbyStores();
   }, []);
 
   const loadCustomerInfo = async () => {
@@ -52,6 +58,64 @@ export default function RecommendScreen() {
     } catch (error) {
       console.error('Error loading customer info:', error);
     }
+  };
+
+  const loadNearbyStores = async (searchText?: string) => {
+    setLoadingNearby(true);
+    setIsSearching(!!searchText);
+    try {
+      // Get user's current location
+      const location = await getCurrentLocation();
+      
+      if (location) {
+        // Fetch nearby merchants from API
+        const response = await apiService.getNearbyMerchants(
+          location.latitude,
+          location.longitude,
+          5000, // 5km radius
+          searchText || undefined
+        );
+        
+        if (response.merchants && response.merchants.length > 0) {
+          // Transform API response to PopularStore format
+          const stores: PopularStore[] = response.merchants.map((merchant: NearbyMerchant) => ({
+            name: merchant.name,
+            icon: merchant.icon,
+            category: merchant.category.charAt(0).toUpperCase() + merchant.category.slice(1),
+          }));
+          setNearbyStores(stores);
+        } else if (searchText) {
+          // If search returned no results, clear stores
+          setNearbyStores([]);
+        }
+      }
+      // If location unavailable or no merchants found, fallback to POPULAR_STORES
+      // (handled in render)
+    } catch (error) {
+      console.error('Error loading nearby stores:', error);
+      // Fallback to POPULAR_STORES on error (unless searching)
+      if (!searchText) {
+        setNearbyStores([]);
+      }
+    } finally {
+      setLoadingNearby(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      loadNearbyStores(searchQuery.trim());
+    } else {
+      // Clear search and reload nearby stores
+      loadNearbyStores();
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setIsSearching(false);
+    loadNearbyStores();
   };
 
   const handleQuickSelect = (storeName: string) => {
@@ -171,11 +235,91 @@ export default function RecommendScreen() {
 
         {!recommendation && !loading && (
           <>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              Popular Stores
-            </Text>
+            <Card style={styles.searchCard}>
+              <Card.Content>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    label="Search nearby places"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    mode="outlined"
+                    style={styles.searchInput}
+                    placeholder="e.g., Starbucks, Target, Gas station"
+                    left={<TextInput.Icon icon="magnify" />}
+                    right={
+                      searchQuery ? (
+                        <TextInput.Icon 
+                          icon="close-circle" 
+                          onPress={handleClearSearch}
+                        />
+                      ) : undefined
+                    }
+                    onSubmitEditing={handleSearch}
+                    disabled={loadingNearby}
+                  />
+                  <Button
+                    mode="contained"
+                    onPress={handleSearch}
+                    style={styles.searchButton}
+                    disabled={loadingNearby || !searchQuery.trim()}
+                    compact
+                  >
+                    {loadingNearby ? 'Searching...' : 'Search'}
+                  </Button>
+                </View>
+              </Card.Content>
+            </Card>
+
+            <View style={styles.sectionHeader}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                {isSearching 
+                  ? `Search Results${searchQuery ? ` for "${searchQuery}"` : ''}`
+                  : nearbyStores.length > 0 
+                    ? 'Nearby Stores' 
+                    : 'Popular Stores'}
+              </Text>
+              {!isSearching && nearbyStores.length > 0 && (
+                <Button
+                  mode="text"
+                  onPress={() => loadNearbyStores()}
+                  disabled={loadingNearby}
+                  compact
+                >
+                  {loadingNearby ? 'Loading...' : 'Refresh'}
+                </Button>
+              )}
+            </View>
+            {loadingNearby && nearbyStores.length === 0 && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" />
+                <Text variant="bodySmall" style={styles.loadingText}>
+                  {isSearching ? 'Searching nearby places...' : 'Finding nearby stores...'}
+                </Text>
+              </View>
+            )}
+            {!loadingNearby && isSearching && nearbyStores.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Text variant="bodyMedium" style={styles.emptyText}>
+                  No places found for "{searchQuery}"
+                </Text>
+                <Button
+                  mode="outlined"
+                  onPress={handleClearSearch}
+                  style={styles.clearButton}
+                >
+                  Clear Search
+                </Button>
+              </View>
+            )}
+            {!isSearching && nearbyStores.length === 0 && !loadingNearby && (
+              <View style={styles.emptyContainer}>
+                <Text variant="bodySmall" style={styles.emptyText}>
+                  Enable location to see nearby stores
+                </Text>
+              </View>
+            )}
             <View style={styles.quickSelectGrid}>
-              {POPULAR_STORES.map((store) => (
+              {(nearbyStores.length > 0 ? nearbyStores : (!isSearching ? POPULAR_STORES : [])).map((store) => (
                 <TouchableOpacity
                   key={store.name}
                   onPress={() => handleQuickSelect(store.name)}
@@ -325,8 +469,13 @@ const styles = StyleSheet.create({
   findButtonContent: {
     paddingVertical: 8,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  sectionTitle: {
     fontWeight: 'bold',
   },
   quickSelectGrid: {
@@ -455,6 +604,30 @@ const styles = StyleSheet.create({
   comparison: {
     color: '#856404',
     lineHeight: 18,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  searchInput: {
+    flex: 1,
+  },
+  searchButton: {
+    marginTop: 0,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  clearButton: {
+    marginTop: 8,
   },
 });
 
