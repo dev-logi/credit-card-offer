@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, List, Button, Divider } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity, Image } from 'react-native';
+import { Text, List, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,10 @@ import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../services/api.service';
 import { MainTabsParamList } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
+import { GradientBackground } from '../components/GradientBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ModernButton } from '../components/ModernButton';
+import { theme } from '../config/theme';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<MainTabsParamList, 'Profile'>;
 
@@ -25,7 +29,6 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     loadProfile();
   }, []);
 
-  // Reload profile when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadProfile();
@@ -38,20 +41,17 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       const name = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_NAME);
       const email = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_EMAIL);
       const customerId = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_ID);
-      
+
       setCustomerName(name || '');
       setCustomerEmail(email || '');
-      
-      // Fetch actual card count from API
+
       if (customerId) {
         try {
           const cards = await apiService.getCustomerCards(customerId);
           setCardsCount(cards.length);
-          // Update AsyncStorage with actual count
           await AsyncStorage.setItem(STORAGE_KEYS.CARDS_COUNT, cards.length.toString());
         } catch (error) {
           console.error('Error fetching cards count:', error);
-          // Fall back to stored count if API fails
           const count = await AsyncStorage.getItem(STORAGE_KEYS.CARDS_COUNT);
           setCardsCount(parseInt(count || '0'));
         }
@@ -76,213 +76,251 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     );
   };
 
+  const MenuItem = ({ title, description, icon, onPress, showDivider = true }: any) => (
+    <>
+      <TouchableOpacity onPress={onPress} style={styles.menuItem}>
+        <View style={styles.menuIconContainer}>
+          <Text style={styles.menuIcon}>{icon}</Text>
+        </View>
+        <View style={styles.menuContent}>
+          <Text variant="bodyLarge" style={styles.menuTitle}>{title}</Text>
+          {description && (
+            <Text variant="bodySmall" style={styles.menuDescription}>{description}</Text>
+          )}
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </TouchableOpacity>
+      {showDivider && <View style={styles.divider} />}
+    </>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>
-              {customerName ? customerName.charAt(0).toUpperCase() : '👤'}
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: `https://api.dicebear.com/7.x/avataaars/png?seed=${customerName || 'Guest'}` }}
+                style={styles.avatar}
+              />
+            </View>
+            <Text variant="headlineSmall" style={styles.name}>
+              {customerName}
+            </Text>
+            <Text variant="bodyMedium" style={styles.email}>
+              {customerEmail}
             </Text>
           </View>
-          <Text variant="headlineSmall" style={styles.name}>
-            {customerName}
-          </Text>
-          <Text variant="bodyMedium" style={styles.email}>
-            {customerEmail}
-          </Text>
-        </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text variant="headlineMedium" style={styles.statNumber}>
-              {cardsCount}
-            </Text>
-            <Text variant="bodySmall" style={styles.statLabel}>
-              Cards
-            </Text>
+          <View style={styles.statsContainer}>
+            <GlassCard style={styles.statBox}>
+              <Text variant="headlineMedium" style={styles.statNumber}>
+                {cardsCount}
+              </Text>
+              <Text variant="bodySmall" style={styles.statLabel}>
+                Cards
+              </Text>
+            </GlassCard>
+            <GlassCard style={styles.statBox}>
+              <Text variant="headlineMedium" style={styles.statNumber}>
+                ✨
+              </Text>
+              <Text variant="bodySmall" style={styles.statLabel}>
+                Premium
+              </Text>
+            </GlassCard>
           </View>
-          <View style={styles.statBox}>
-            <Text variant="headlineMedium" style={styles.statNumber}>
-              ✨
-            </Text>
-            <Text variant="bodySmall" style={styles.statLabel}>
-              Active
-            </Text>
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Account
-          </Text>
-          <List.Item
-            title="Personal Information"
-            description="View and edit your profile"
-            left={props => <List.Icon {...props} icon="account" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="My Cards"
-            description={`${cardsCount} card${cardsCount !== 1 ? 's' : ''} in wallet`}
-            left={props => <List.Icon {...props} icon="credit-card" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => navigation.navigate('MyCards')}
-          />
-        </View>
+          <GlassCard style={styles.section}>
+            <Text style={styles.sectionTitle}>ACCOUNT</Text>
+            <MenuItem
+              title="Personal Information"
+              description="View and edit your profile"
+              icon="👤"
+              onPress={() => { }}
+            />
+            <MenuItem
+              title="My Cards"
+              description={`${cardsCount} card${cardsCount !== 1 ? 's' : ''} in wallet`}
+              icon="💳"
+              onPress={() => navigation.navigate('MyCards')}
+              showDivider={false}
+            />
+          </GlassCard>
 
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Preferences
-          </Text>
-          <List.Item
-            title="Notifications"
-            description="Manage notification settings"
-            left={props => <List.Icon {...props} icon="bell" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Privacy"
-            description="Control your data"
-            left={props => <List.Icon {...props} icon="shield-check" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-        </View>
+          <GlassCard style={styles.section}>
+            <Text style={styles.sectionTitle}>PREFERENCES</Text>
+            <MenuItem
+              title="Notifications"
+              description="Manage notification settings"
+              icon="🔔"
+              onPress={() => { }}
+            />
+            <MenuItem
+              title="Privacy"
+              description="Control your data"
+              icon="🛡️"
+              onPress={() => { }}
+              showDivider={false}
+            />
+          </GlassCard>
 
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            About
-          </Text>
-          <List.Item
-            title="Help & Support"
-            description="Get help with the app"
-            left={props => <List.Icon {...props} icon="help-circle" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Terms of Service"
-            left={props => <List.Icon {...props} icon="file-document" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Privacy Policy"
-            left={props => <List.Icon {...props} icon="shield-lock" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Version"
-            description="1.0.0"
-            left={props => <List.Icon {...props} icon="information" />}
-          />
-        </View>
+          <GlassCard style={styles.section}>
+            <Text style={styles.sectionTitle}>ABOUT</Text>
+            <MenuItem
+              title="Help & Support"
+              icon="❓"
+              onPress={() => { }}
+            />
+            <MenuItem
+              title="Terms of Service"
+              icon="📄"
+              onPress={() => { }}
+            />
+            <MenuItem
+              title="Privacy Policy"
+              icon="🔒"
+              onPress={() => { }}
+              showDivider={false}
+            />
+          </GlassCard>
 
-        <View style={styles.logoutContainer}>
-          <Button
-            mode="outlined"
+          <ModernButton
+            title="Logout"
             onPress={onLogoutPress}
+            mode="outlined"
             style={styles.logoutButton}
-            textColor="#d32f2f"
-          >
-            Logout
-          </Button>
-        </View>
+            textStyle={styles.logoutText}
+          />
 
-        <Text variant="bodySmall" style={styles.footer}>
-          Smart Card Picker © 2025
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+          <Text variant="bodySmall" style={styles.footer}>
+            Smart Card Picker v1.0.0
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#fff',
-    marginBottom: 16,
+    marginBottom: 32,
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#6200ee',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
   },
   avatar: {
-    fontSize: 36,
-    color: '#fff',
-    fontWeight: 'bold',
+    width: '100%',
+    height: '100%',
   },
   name: {
     fontWeight: 'bold',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   email: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   statsContainer: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    marginBottom: 16,
     gap: 16,
+    marginBottom: 32,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   statNumber: {
     fontWeight: 'bold',
-    color: '#6200ee',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   statLabel: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
+    textTransform: 'uppercase',
+    fontSize: 10,
+    letterSpacing: 1,
   },
   section: {
-    backgroundColor: '#fff',
-    marginBottom: 16,
+    marginBottom: 24,
+    padding: 0,
+    overflow: 'hidden',
   },
   sectionTitle: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 8,
     fontWeight: 'bold',
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 12,
+    letterSpacing: 1,
   },
-  logoutContainer: {
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
-    marginBottom: 16,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  menuIcon: {
+    fontSize: 20,
+  },
+  menuContent: {
+    flex: 1,
+  },
+  menuTitle: {
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  menuDescription: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 2,
+  },
+  chevron: {
+    color: 'rgba(255, 255, 255, 0.3)',
+    fontSize: 24,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginLeft: 72,
   },
   logoutButton: {
-    borderColor: '#d32f2f',
+    marginTop: 8,
+    borderColor: theme.colors.error,
+    borderWidth: 1,
+  },
+  logoutText: {
+    color: theme.colors.error,
   },
   footer: {
     textAlign: 'center',
-    color: '#999',
-    paddingVertical: 24,
+    color: 'rgba(255, 255, 255, 0.3)',
+    marginTop: 32,
   },
 });
-

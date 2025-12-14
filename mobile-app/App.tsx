@@ -1,8 +1,11 @@
+import 'react-native-gesture-handler';
 import React, { useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { AppNavigator, theme } from './src/navigation/AppNavigator';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import { theme } from './src/config/theme';
 
 const theme_config = {
   ...MD3LightTheme,
@@ -39,11 +42,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <PaperProvider theme={theme_config}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </PaperProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PaperProvider theme={theme_config}>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
 

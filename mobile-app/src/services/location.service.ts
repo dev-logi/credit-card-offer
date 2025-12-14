@@ -50,6 +50,16 @@ export async function getCurrentLocation(): Promise<LocationCoordinates | null> 
     };
   } catch (error) {
     console.error('Error getting location:', error);
+
+    // Fallback for development/simulator if location fails
+    if (__DEV__) {
+      console.log('⚠️ Using fallback location (San Francisco) for development');
+      return {
+        latitude: 37.7749,
+        longitude: -122.4194,
+      };
+    }
+
     return null;
   }
 }
