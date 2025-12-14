@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, HelperText } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Text, TextInput, HelperText } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,10 @@ import { apiService } from '../services/api.service';
 import { supabase } from '../services/supabase.service';
 import { RootStackParamList } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
+import { GradientBackground } from '../components/GradientBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ModernButton } from '../components/ModernButton';
+import { theme } from '../config/theme';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -36,23 +40,23 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-    
+
     if (!name.trim()) {
       newErrors.name = 'Name is required';
     }
-    
+
     if (!email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!validateEmail(email)) {
       newErrors.email = 'Please enter a valid email';
     }
-    
+
     if (!password.trim()) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -83,7 +87,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 
       // 2. Use Supabase user ID as customer ID
       const customerId = authData.user.id;
-      
+
       // 3. Create customer in our FastAPI backend
       await apiService.createCustomer({
         id: customerId,
@@ -101,13 +105,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     } catch (error: any) {
       console.error('Registration error:', error);
       let errorMessage = 'Unable to create account. Please try again.';
-      
+
       if (error.message.includes('already registered')) {
         errorMessage = 'This email is already registered. Please try logging in instead.';
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       Alert.alert('Registration Failed', errorMessage, [{ text: 'OK' }]);
     } finally {
       setLoading(false);
@@ -115,133 +119,172 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text variant="headlineLarge" style={styles.title}>
-            Create Account
-          </Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>
-            Let's get you started with Smart Card Picker
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <TextInput
-            label="Full Name"
-            value={name}
-            onChangeText={(text) => {
-              setName(text);
-              if (errors.name) setErrors({ ...errors, name: undefined });
-            }}
-            mode="outlined"
-            style={styles.input}
-            error={!!errors.name}
-            disabled={loading}
-          />
-          <HelperText type="error" visible={!!errors.name}>
-            {errors.name}
-          </HelperText>
-
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (errors.email) setErrors({ ...errors, email: undefined });
-            }}
-            mode="outlined"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-            error={!!errors.email}
-            disabled={loading}
-          />
-          <HelperText type="error" visible={!!errors.email}>
-            {errors.email}
-          </HelperText>
-
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              if (errors.password) setErrors({ ...errors, password: undefined });
-            }}
-            mode="outlined"
-            secureTextEntry={!showPassword}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? 'eye-off' : 'eye'}
-                onPress={() => setShowPassword(!showPassword)}
-              />
-            }
-            style={styles.input}
-            error={!!errors.password}
-            disabled={loading}
-          />
-          <HelperText type="error" visible={!!errors.password}>
-            {errors.password}
-          </HelperText>
-
-          <Button
-            mode="contained"
-            onPress={handleRegister}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            loading={loading}
-            disabled={loading}
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            Continue
-          </Button>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
 
-          <Text variant="bodySmall" style={styles.terms}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.header}>
+            <Text variant="headlineMedium" style={styles.title}>
+              Create Account
+            </Text>
+            <Text variant="bodyMedium" style={styles.subtitle}>
+              Start maximizing your rewards today.
+            </Text>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <GlassCard style={styles.inputCard}>
+                <TextInput
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (errors.name) setErrors({ ...errors, name: undefined });
+                  }}
+                  placeholder="John Doe"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  style={styles.input}
+                  underlineColor="transparent"
+                  activeUnderlineColor="transparent"
+                  textColor={theme.colors.text}
+                  disabled={loading}
+                />
+              </GlassCard>
+              <HelperText type="error" visible={!!errors.name}>
+                {errors.name}
+              </HelperText>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <GlassCard style={styles.inputCard}>
+                <TextInput
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors({ ...errors, email: undefined });
+                  }}
+                  placeholder="john@example.com"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  underlineColor="transparent"
+                  activeUnderlineColor="transparent"
+                  textColor={theme.colors.text}
+                  disabled={loading}
+                />
+              </GlassCard>
+              <HelperText type="error" visible={!!errors.email}>
+                {errors.email}
+              </HelperText>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <GlassCard style={styles.inputCard}>
+                <TextInput
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors({ ...errors, password: undefined });
+                  }}
+                  placeholder="••••••••"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  secureTextEntry={!showPassword}
+                  right={
+                    <TextInput.Icon
+                      icon={showPassword ? 'eye-off' : 'eye'}
+                      color="rgba(255, 255, 255, 0.7)"
+                      onPress={() => setShowPassword(!showPassword)}
+                    />
+                  }
+                  style={styles.input}
+                  underlineColor="transparent"
+                  activeUnderlineColor="transparent"
+                  textColor={theme.colors.text}
+                  disabled={loading}
+                />
+              </GlassCard>
+              <HelperText type="error" visible={!!errors.password}>
+                {errors.password}
+              </HelperText>
+            </View>
+
+            <ModernButton
+              title="Continue"
+              onPress={handleRegister}
+              style={styles.button}
+              loading={loading}
+              disabled={loading}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
+    padding: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 20,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 32,
+    marginBottom: 32,
   },
   title: {
     fontWeight: 'bold',
+    color: theme.colors.text,
     marginBottom: 8,
   },
   subtitle: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   form: {
-    paddingHorizontal: 24,
+    gap: 8,
+  },
+  inputContainer: {
+    marginBottom: 8,
+  },
+  label: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 8,
+    marginLeft: 4,
+    fontSize: 14,
+  },
+  inputCard: {
+    borderRadius: 16,
   },
   input: {
-    marginBottom: 8,
+    backgroundColor: 'transparent',
+    height: 56,
+    paddingHorizontal: 16,
   },
   button: {
     marginTop: 24,
-    borderRadius: 12,
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-  terms: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 16,
-    lineHeight: 20,
   },
 });
-

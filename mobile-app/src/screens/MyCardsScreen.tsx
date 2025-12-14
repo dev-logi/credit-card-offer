@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity, Animated } from 'react-native';
-import { Text, Card, FAB, Chip } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Animated } from 'react-native';
+import { Text, FAB } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,6 +9,10 @@ import { apiService } from '../services/api.service';
 import { AVAILABLE_CARDS, getCardById } from '../data/availableCards';
 import { MainTabsParamList, CreditCard, AvailableCard } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
+import { GradientBackground } from '../components/GradientBackground';
+import { GlassCard } from '../components/GlassCard';
+import { theme } from '../config/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type MyCardsScreenNavigationProp = NativeStackNavigationProp<MainTabsParamList, 'MyCards'>;
 
@@ -25,7 +29,6 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
     loadCards();
   }, []);
 
-  // Reload cards when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadCards();
@@ -53,24 +56,13 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
     loadCards();
   };
 
-  const getCardDetails = (cardName: string): AvailableCard | null => {
-    // Try to match with available cards
-    for (const availableCard of AVAILABLE_CARDS) {
-      if (availableCard.name === cardName) {
-        return availableCard;
-      }
-    }
-    return null;
-  };
-
-  const getNetworkColor = (issuer: string): string => {
-    if (issuer.includes('American Express')) return '#006FCF';
-    if (issuer.includes('Chase')) return '#1A1F71';
-    if (issuer.includes('Citi')) return '#EB001B';
-    if (issuer.includes('Discover')) return '#FF6000';
-    if (issuer.includes('Capital One')) return '#004977';
-    if (issuer.includes('Wells Fargo')) return '#D71E28';
-    return '#666';
+  const getCardGradient = (issuer: string): readonly [string, string, ...string[]] => {
+    if (issuer.includes('American Express')) return ['#006FCF', '#004080'];
+    if (issuer.includes('Chase')) return ['#1A1F71', '#0D1040'];
+    if (issuer.includes('Citi')) return ['#004A98', '#002D5C'];
+    if (issuer.includes('Discover')) return ['#FF6000', '#CC4D00'];
+    if (issuer.includes('Capital One')) return ['#D03027', '#9B231C'];
+    return ['#475569', '#334155'];
   };
 
   const handleDeleteCard = async (card: CreditCard) => {
@@ -78,10 +70,7 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
       'Delete Card',
       `Are you sure you want to remove ${card.card_name} from your wallet?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -90,15 +79,9 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
               const customerId = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_ID);
               if (customerId) {
                 await apiService.deleteCard(customerId, card.id);
-                
-                // Update card count in AsyncStorage
                 const updatedCards = cards.filter(c => c.id !== card.id);
                 await AsyncStorage.setItem('cardCount', updatedCards.length.toString());
-                
-                // Update local state
                 setCards(updatedCards);
-                
-                Alert.alert('Success', 'Card removed from your wallet');
               }
             } catch (error) {
               console.error('Error deleting card:', error);
@@ -122,226 +105,260 @@ export default function MyCardsScreen({ navigation }: MyCardsScreenProps) {
 
     return (
       <TouchableOpacity
-        style={styles.deleteButton}
+        style={styles.deleteButtonContainer}
         onPress={() => handleDeleteCard(card)}
       >
         <Animated.View
           style={[
-            styles.deleteButtonContent,
-            {
-              transform: [{ translateX: trans }],
-            },
+            styles.deleteButton,
+            { transform: [{ translateX: trans }] },
           ]}
         >
-          <Text style={styles.deleteButtonText}>🗑️</Text>
-          <Text style={styles.deleteButtonLabel}>Delete</Text>
+          <Text style={styles.deleteIcon}>🗑️</Text>
         </Animated.View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={styles.title}>
-          My Cards
-        </Text>
-        <Text variant="bodyMedium" style={styles.subtitle}>
-          {cards.length} card{cards.length !== 1 ? 's' : ''} in your wallet
-        </Text>
-      </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text variant="headlineMedium" style={styles.title}>
+            My Wallet
+          </Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            {cards.length} card{cards.length !== 1 ? 's' : ''} added
+          </Text>
+        </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {cards.length === 0 && !loading ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>💳</Text>
-            <Text variant="titleLarge" style={styles.emptyTitle}>
-              No Cards Yet
-            </Text>
-            <Text variant="bodyMedium" style={styles.emptyText}>
-              Add your credit cards to get personalized recommendations
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.cardList}>
-            {cards.map((card) => {
-              const cardColor = getNetworkColor(card.issuer);
-              const cardInfo = getCardDetails(card.card_name);
-              
-              return (
-                <Swipeable
-                  key={card.id}
-                  renderRightActions={renderRightActions(card)}
-                  overshootRight={false}
-                >
-                  <Card style={styles.card}>
-                    <View style={[styles.cardAccent, { backgroundColor: cardColor }]} />
-                    <Card.Content>
-                      <View style={styles.cardHeader}>
-                        <Text style={styles.cardIcon}>💳</Text>
-                        <View style={styles.cardInfo}>
-                          <Text variant="titleMedium" style={styles.cardName}>
-                            {card.card_name}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.issuer}>
-                            {card.issuer}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardDetails}>
-                        <Chip icon="credit-card" compact style={styles.chip}>
-                          •••• {card.last_four}
-                        </Chip>
-                        <Chip icon="percent" compact style={styles.chip}>
-                          {card.base_reward_rate}% base rewards
-                        </Chip>
-                      </View>
-
-                      {cardInfo?.description && (
-                        <Text variant="bodySmall" style={styles.highlights}>
-                          🎯 {cardInfo.description}
-                        </Text>
-                      )}
-                    </Card.Content>
-                  </Card>
-                </Swipeable>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
-
-      <FAB
-        icon="plus"
-        label="Add Card"
-        style={styles.fab}
-        onPress={async () => {
-          const customerId = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_ID);
-          if (customerId) {
-            navigation.navigate('SelectCards' as any, { customerId, isFirstTime: false });
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="white" />
           }
-        }}
-      />
-    </SafeAreaView>
+        >
+          {cards.length === 0 && !loading ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <Text style={styles.emptyIcon}>💳</Text>
+              </View>
+              <Text variant="titleLarge" style={styles.emptyTitle}>
+                No Cards Yet
+              </Text>
+              <Text variant="bodyMedium" style={styles.emptyText}>
+                Add your credit cards to get personalized recommendations
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.cardStack}>
+              {cards.map((card, index) => {
+                const gradientColors = getCardGradient(card.issuer);
+
+                return (
+                  <Swipeable
+                    key={card.id}
+                    renderRightActions={renderRightActions(card)}
+                    overshootRight={false}
+                  >
+                    <View style={[styles.cardContainer, { zIndex: cards.length - index }]}>
+                      <LinearGradient
+                        colors={gradientColors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.card}
+                      >
+                        <View style={styles.cardHeader}>
+                          <Text style={styles.cardIssuer}>{card.issuer.toUpperCase()}</Text>
+                          <Text style={styles.cardName}>{card.card_name}</Text>
+                        </View>
+
+                        <View style={styles.cardBody}>
+                          <View style={styles.chip} />
+                          <Text style={styles.cardNumber}>•••• •••• •••• {card.last_four}</Text>
+                        </View>
+
+                        <View style={styles.cardFooter}>
+                          <View>
+                            <Text style={styles.cardLabel}>CARDHOLDER</Text>
+                            <Text style={styles.cardValue}>LOGESH</Text>
+                          </View>
+                          <View>
+                            <Text style={styles.cardLabel}>REWARDS</Text>
+                            <Text style={styles.cardValue}>{card.base_reward_rate}%</Text>
+                          </View>
+                        </View>
+                      </LinearGradient>
+                    </View>
+                  </Swipeable>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          color="white"
+          onPress={async () => {
+            const customerId = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOMER_ID);
+            if (customerId) {
+              navigation.navigate('SelectCards' as any, { customerId, isFirstTime: false });
+            }
+          }}
+        />
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     padding: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontWeight: 'bold',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   subtitle: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   scrollView: {
     flex: 1,
   },
-  cardList: {
-    padding: 16,
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 100,
+  },
+  cardStack: {
+    marginTop: 10,
+  },
+  cardContainer: {
+    marginBottom: -80, // Negative margin for stack effect
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.30,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
   card: {
-    marginBottom: 16,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  cardAccent: {
-    height: 4,
+    borderRadius: 16,
+    padding: 24,
+    height: 200,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  cardIcon: {
-    fontSize: 40,
-    marginRight: 12,
-  },
-  cardInfo: {
-    flex: 1,
+  cardIssuer: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 1,
   },
   cardName: {
-    fontWeight: '600',
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'right',
+    maxWidth: '60%',
   },
-  issuer: {
-    color: '#666',
-  },
-  cardDetails: {
+  cardBody: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 16,
   },
   chip: {
-    backgroundColor: '#f0f0f0',
+    width: 40,
+    height: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  highlights: {
-    color: '#666',
-    fontStyle: 'italic',
+  cardNumber: {
+    color: 'white',
+    fontSize: 18,
+    letterSpacing: 2,
+    fontFamily: 'Courier', // Monospace font if available
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  cardLabel: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  cardValue: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
-    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 40,
   },
   emptyTitle: {
     fontWeight: 'bold',
+    color: theme.colors.text,
     marginBottom: 8,
-    textAlign: 'center',
   },
   emptyText: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
-    lineHeight: 22,
+    maxWidth: '80%',
   },
   fab: {
     position: 'absolute',
-    right: 16,
-    bottom: 16,
+    right: 24,
+    bottom: 24,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 28,
+  },
+  deleteButtonContainer: {
+    width: 80,
+    height: 200,
+    marginBottom: -80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteButton: {
-    backgroundColor: '#d32f2f',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.error,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 100,
-    marginBottom: 16,
-    borderRadius: 12,
   },
-  deleteButtonContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  deleteButtonText: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  deleteButtonLabel: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  deleteIcon: {
+    fontSize: 24,
   },
 });
-

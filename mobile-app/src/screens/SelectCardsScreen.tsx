@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, Button, Chip, Searchbar, Card } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Text, Searchbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,6 +10,11 @@ import { AVAILABLE_CARDS, groupCardsByIssuer } from '../data/availableCards';
 import { useAuth } from '../hooks/useAuth';
 import { RootStackParamList, AvailableCard } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
+import { GradientBackground } from '../components/GradientBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ModernButton } from '../components/ModernButton';
+import { theme } from '../config/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type SelectCardsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SelectCards'>;
 type SelectCardsScreenRouteProp = RouteProp<RootStackParamList, 'SelectCards'>;
@@ -49,13 +54,29 @@ export default function SelectCardsScreen({ route, navigation }: SelectCardsScre
 
     setLoading(true);
     try {
+      // First, get existing cards to avoid duplicates
+      const existingCards = await apiService.getCustomerCards(customerId);
+      const existingCardIds = new Set(existingCards.map(c => c.id));
+
       // Add each selected card to the customer's account
       for (const cardId of selectedCards) {
         const cardInfo = AVAILABLE_CARDS.find(c => c.id === cardId);
-        if (!cardInfo) continue;
+        if (!cardInfo) {
+          console.warn(`Card info not found for ID: ${cardId}`);
+          continue;
+        }
+
+        const cardDbId = `${customerId}_${cardId}`;
         
+        // Skip if card already exists
+        if (existingCardIds.has(cardDbId)) {
+          console.log(`Card ${cardInfo.name} already exists, skipping...`);
+          continue;
+        }
+
+        console.log(`Adding card: ${cardInfo.name} (${cardInfo.issuer})`);
         await apiService.addCard(customerId, {
-          id: `${customerId}_${cardId}`,
+          id: cardDbId,
           card_name: cardInfo.name,
           issuer: cardInfo.issuer,
           last_four: '0000', // Placeholder
@@ -67,21 +88,15 @@ export default function SelectCardsScreen({ route, navigation }: SelectCardsScre
       const allCards = await apiService.getCustomerCards(customerId);
       const totalCount = allCards.length;
       await AsyncStorage.setItem(STORAGE_KEYS.CARDS_COUNT, totalCount.toString());
-      console.log(`✅ Total cards now: ${totalCount}`);
 
       if (isFirstTime) {
-        // Complete registration - update app state to show main tabs
-        console.log('✅ Cards added successfully - completing registration');
         await handleRegistrationComplete();
-        // Show success message (navigation will happen automatically)
         Alert.alert(
           'Setup Complete! 🎉',
           `You've added ${totalCount} card${totalCount > 1 ? 's' : ''} to your wallet. Let's find the best card for your next purchase!`,
           [{ text: 'Start Using' }]
         );
       } else {
-        // Going back to My Cards screen after adding cards
-        console.log(`✅ ${selectedCards.length} card(s) added - total now: ${totalCount}`);
         Alert.alert(
           'Cards Added! ✅',
           `Successfully added ${selectedCards.length} card${selectedCards.length > 1 ? 's' : ''}. You now have ${totalCount} card${totalCount > 1 ? 's' : ''} in your wallet.`,
@@ -90,174 +105,154 @@ export default function SelectCardsScreen({ route, navigation }: SelectCardsScre
       }
     } catch (error: any) {
       console.error('Error adding cards:', error);
-      
-      // Check if it's a 404 error (customer doesn't exist)
-      if (error.response?.status === 404) {
-        Alert.alert(
-          '🚨 Customer Not Found',
-          'Your customer ID is invalid (database was reset).\n\n' +
-          '📋 TO FIX:\n' +
-          '1. Press F12 to open Console\n' +
-          '2. Run: localStorage.clear(); location.reload();\n' +
-          '3. Register fresh account\n\n' +
-          'This will take 30 seconds and fix the issue!',
-          [
-            {
-              text: 'Clear Storage Now',
-              onPress: () => {
-                AsyncStorage.clear();
-                Alert.alert('Storage Cleared', 'Please refresh the page (Cmd+R or Ctrl+R)');
-              }
-            },
-            { text: 'OK' }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          `Failed to add cards: ${error.message}\n\nPlease try again or check console for details.`,
-          [{ text: 'OK' }]
-        );
-      }
+      Alert.alert('Error', 'Failed to add cards. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const getCardGradient = (issuer: string): readonly [string, string, ...string[]] => {
+    if (issuer.includes('American Express')) return ['#006FCF', '#004080'];
+    if (issuer.includes('Chase')) return ['#1A1F71', '#0D1040'];
+    if (issuer.includes('Citi')) return ['#004A98', '#002D5C'];
+    if (issuer.includes('Discover')) return ['#FF6000', '#CC4D00'];
+    if (issuer.includes('Capital One')) return ['#D03027', '#9B231C'];
+    return ['#475569', '#334155'];
+  };
+
   const renderCardItem = (card: AvailableCard) => {
     const isSelected = selectedCards.includes(card.id);
-    
+    const gradientColors = getCardGradient(card.issuer);
+
     return (
       <TouchableOpacity
         key={card.id}
         onPress={() => toggleCard(card.id)}
+        activeOpacity={0.9}
         style={styles.cardItem}
       >
-        <Card style={[styles.card, isSelected && styles.cardSelected]}>
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>💳</Text>
-              <View style={styles.cardInfo}>
-                <Text variant="titleMedium" style={styles.cardName}>
-                  {card.name}
-                </Text>
-                <Text variant="bodySmall" style={styles.cardIssuer}>
-                  {card.issuer}
-                </Text>
-              </View>
-              {isSelected && (
-                <Text style={styles.checkmark}>✓</Text>
-              )}
-            </View>
-            <View style={styles.cardDetails}>
-              <Text variant="bodySmall" style={styles.highlights}>
+        <GlassCard style={[styles.card, isSelected && styles.cardSelected]}>
+          <View style={styles.cardContent}>
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardPreview}
+            />
+            <View style={styles.cardInfo}>
+              <Text variant="titleMedium" style={styles.cardName} numberOfLines={1}>
+                {card.name}
+              </Text>
+              <Text variant="bodySmall" style={styles.cardIssuer}>
+                {card.issuer}
+              </Text>
+              <Text variant="bodySmall" style={styles.cardDesc} numberOfLines={1}>
                 {card.description}
               </Text>
             </View>
-          </Card.Content>
-        </Card>
+            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+          </View>
+        </GlassCard>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={styles.title}>
-          {isFirstTime ? 'Select Your Cards' : 'Add More Cards'}
-        </Text>
-        <Text variant="bodyMedium" style={styles.subtitle}>
-          {isFirstTime 
-            ? 'Choose the credit cards you own'
-            : 'Select additional cards to add'
-          }
-        </Text>
-        {selectedCards.length > 0 && (
-          <Chip style={styles.selectionChip}>
-            {selectedCards.length} card{selectedCards.length > 1 ? 's' : ''} selected
-          </Chip>
-        )}
-      </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text variant="headlineMedium" style={styles.title}>
+            {isFirstTime ? 'Select Your Cards' : 'Add More Cards'}
+          </Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            {isFirstTime
+              ? 'Tap the cards you currently own'
+              : 'Select additional cards to add'
+            }
+          </Text>
+        </View>
 
-      <Searchbar
-        placeholder="Search cards..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
+        <View style={styles.searchContainer}>
+          <Searchbar
+            placeholder="Search cards..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            placeholderTextColor="rgba(255, 255, 255, 0.5)"
+            iconColor="rgba(255, 255, 255, 0.7)"
+          />
+        </View>
 
-      <ScrollView style={styles.scrollView}>
-        {searchQuery ? (
-          <View style={styles.cardList}>
-            {filteredCards.map(renderCardItem)}
-          </View>
-        ) : (
-          Object.entries(groupedCards).map(([issuer, cards]) => (
-            <View key={issuer} style={styles.issuerGroup}>
-              <Text variant="titleMedium" style={styles.issuerName}>
-                {issuer}
-              </Text>
-              {cards.map(renderCardItem)}
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {searchQuery ? (
+            <View style={styles.cardList}>
+              {filteredCards.map(renderCardItem)}
             </View>
-          ))
-        )}
-      </ScrollView>
+          ) : (
+            Object.entries(groupedCards).map(([issuer, cards]) => (
+              <View key={issuer} style={styles.issuerGroup}>
+                <Text variant="titleMedium" style={styles.issuerName}>
+                  {issuer}
+                </Text>
+                {cards.map(renderCardItem)}
+              </View>
+            ))
+          )}
+        </ScrollView>
 
-      <View style={styles.footer}>
-        <Button
-          mode="contained"
-          onPress={handleContinue}
-          disabled={selectedCards.length === 0 || loading}
-          loading={loading}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-        >
-          {isFirstTime ? 'Continue' : 'Add Cards'}
-        </Button>
-        {!isFirstTime && (
-          <Button
-            mode="text"
-            onPress={() => navigation.goBack()}
-            style={styles.cancelButton}
-          >
-            Cancel
-          </Button>
-        )}
-      </View>
-    </SafeAreaView>
+        <View style={styles.footer}>
+          <ModernButton
+            title={isFirstTime ? `Continue (${selectedCards.length})` : `Add ${selectedCards.length} Cards`}
+            onPress={handleContinue}
+            disabled={selectedCards.length === 0 || loading}
+            loading={loading}
+            style={styles.button}
+          />
+        </View>
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#fff',
   },
   title: {
     fontWeight: 'bold',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   subtitle: {
-    color: '#666',
-    marginBottom: 8,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
-  selectionChip: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
+  searchContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   searchBar: {
-    marginHorizontal: 16,
-    marginVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
     elevation: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  searchInput: {
+    color: theme.colors.text,
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   issuerGroup: {
     marginBottom: 24,
@@ -266,67 +261,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 12,
     fontWeight: 'bold',
+    color: 'rgba(255, 255, 255, 0.5)',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    letterSpacing: 1,
   },
   cardList: {
     paddingBottom: 16,
   },
   cardItem: {
     marginBottom: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
   },
   card: {
-    elevation: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   cardSelected: {
-    borderWidth: 2,
-    borderColor: '#6200ee',
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
-  cardHeader: {
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    padding: 16,
   },
-  cardIcon: {
-    fontSize: 32,
-    marginRight: 12,
+  cardPreview: {
+    width: 60,
+    height: 38,
+    borderRadius: 6,
+    marginRight: 16,
   },
   cardInfo: {
     flex: 1,
   },
   cardName: {
     fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 2,
   },
   cardIssuer: {
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+  },
+  cardDesc: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   checkmark: {
-    fontSize: 24,
-    color: '#6200ee',
+    color: 'white',
+    fontSize: 14,
     fontWeight: 'bold',
   },
-  cardDetails: {
-    gap: 8,
-  },
-  chip: {
-    alignSelf: 'flex-start',
-  },
-  highlights: {
-    color: '#666',
-  },
   footer: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    padding: 24,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    // Gradient background for footer to fade out content behind it
   },
   button: {
-    borderRadius: 12,
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-  cancelButton: {
-    marginTop: 8,
+    width: '100%',
   },
 });
-

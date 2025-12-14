@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, TextInput, Button, Card, Chip, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity, Image } from 'react-native';
+import { Text, TextInput, ActivityIndicator, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api.service';
 import { getCurrentLocation } from '../services/location.service';
 import { RecommendationResponse, NearbyMerchant } from '../types';
 import { STORAGE_KEYS } from '../config/constants';
+import { GradientBackground } from '../components/GradientBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ModernButton } from '../components/ModernButton';
+import { theme } from '../config/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface PopularStore {
   name: string;
@@ -19,7 +24,6 @@ interface NetworkBadge {
   color: string;
 }
 
-// Popular merchants for quick selection
 const POPULAR_STORES: PopularStore[] = [
   { name: 'Whole Foods', icon: '🛒', category: 'Grocery' },
   { name: 'Costco', icon: '🏬', category: 'Wholesale' },
@@ -64,20 +68,17 @@ export default function RecommendScreen() {
     setLoadingNearby(true);
     setIsSearching(!!searchText);
     try {
-      // Get user's current location
       const location = await getCurrentLocation();
-      
+
       if (location) {
-        // Fetch nearby merchants from API
         const response = await apiService.getNearbyMerchants(
           location.latitude,
           location.longitude,
-          5000, // 5km radius
+          5000,
           searchText || undefined
         );
-        
+
         if (response.merchants && response.merchants.length > 0) {
-          // Transform API response to PopularStore format
           const stores: PopularStore[] = response.merchants.map((merchant: NearbyMerchant) => ({
             name: merchant.name,
             icon: merchant.icon,
@@ -85,15 +86,11 @@ export default function RecommendScreen() {
           }));
           setNearbyStores(stores);
         } else if (searchText) {
-          // If search returned no results, clear stores
           setNearbyStores([]);
         }
       }
-      // If location unavailable or no merchants found, fallback to POPULAR_STORES
-      // (handled in render)
     } catch (error) {
       console.error('Error loading nearby stores:', error);
-      // Fallback to POPULAR_STORES on error (unless searching)
       if (!searchText) {
         setNearbyStores([]);
       }
@@ -106,7 +103,6 @@ export default function RecommendScreen() {
     if (searchQuery.trim()) {
       loadNearbyStores(searchQuery.trim());
     } else {
-      // Clear search and reload nearby stores
       loadNearbyStores();
       setIsSearching(false);
     }
@@ -138,14 +134,13 @@ export default function RecommendScreen() {
         Alert.alert('Error', 'Customer ID not found');
         return;
       }
-      
+
       const requestData: any = {
         customer_id: customerId,
         merchant_name: merchantName.trim(),
         top_n: 3,
       };
 
-      // Add purchase amount if provided
       if (purchaseAmount && parseFloat(purchaseAmount) > 0) {
         requestData.purchase_amount = parseFloat(purchaseAmount);
       }
@@ -171,7 +166,7 @@ export default function RecommendScreen() {
   };
 
   const getNetworkBadge = (cardName: string): NetworkBadge => {
-    if (cardName.includes('American Express')) return { label: 'Amex', color: '#006FCF' };
+    if (cardName.includes('American Express')) return { label: 'Amex', color: '#3b82f6' };
     if (cardName.includes('Chase')) return { label: 'Visa', color: '#1A1F71' };
     if (cardName.includes('Citi')) return { label: 'Mastercard', color: '#EB001B' };
     if (cardName.includes('Discover')) return { label: 'Discover', color: '#FF6000' };
@@ -184,331 +179,313 @@ export default function RecommendScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text variant="headlineMedium" style={styles.greeting}>
-            {customerName ? `Hi, ${customerName.split(' ')[0]}! 👋` : 'Hi! 👋'}
-          </Text>
-          <Text variant="titleLarge" style={styles.title}>
-            Find Your Best Card
-          </Text>
-        </View>
-
-        <Card style={styles.searchCard}>
-          <Card.Content>
-            <TextInput
-              label="Where are you shopping?"
-              value={merchantName}
-              onChangeText={setMerchantName}
-              mode="outlined"
-              style={styles.input}
-              placeholder="e.g., Whole Foods, Target, Chipotle"
-              left={<TextInput.Icon icon="store" />}
-              disabled={loading}
-            />
-
-            <TextInput
-              label="Purchase Amount (Optional)"
-              value={purchaseAmount}
-              onChangeText={setPurchaseAmount}
-              mode="outlined"
-              keyboardType="decimal-pad"
-              style={styles.input}
-              placeholder="e.g., 50.00"
-              left={<TextInput.Icon icon="currency-usd" />}
-              disabled={loading}
-            />
-
-            <Button
-              mode="contained"
-              onPress={handleFindCard}
-              style={styles.findButton}
-              contentStyle={styles.findButtonContent}
-              loading={loading}
-              disabled={loading || !merchantName.trim()}
-            >
-              Find Best Card
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {!recommendation && !loading && (
-          <>
-            <Card style={styles.searchCard}>
-              <Card.Content>
-                <View style={styles.searchContainer}>
-                  <TextInput
-                    label="Search nearby places"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    mode="outlined"
-                    style={styles.searchInput}
-                    placeholder="e.g., Starbucks, Target, Gas station"
-                    left={<TextInput.Icon icon="magnify" />}
-                    right={
-                      searchQuery ? (
-                        <TextInput.Icon 
-                          icon="close-circle" 
-                          onPress={handleClearSearch}
-                        />
-                      ) : undefined
-                    }
-                    onSubmitEditing={handleSearch}
-                    disabled={loadingNearby}
-                  />
-                  <Button
-                    mode="contained"
-                    onPress={handleSearch}
-                    style={styles.searchButton}
-                    disabled={loadingNearby || !searchQuery.trim()}
-                    compact
-                  >
-                    {loadingNearby ? 'Searching...' : 'Search'}
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-
-            <View style={styles.sectionHeader}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {isSearching 
-                  ? `Search Results${searchQuery ? ` for "${searchQuery}"` : ''}`
-                  : nearbyStores.length > 0 
-                    ? 'Nearby Stores' 
-                    : 'Popular Stores'}
+    <GradientBackground>
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greetingLabel}>Good Morning,</Text>
+              <Text variant="headlineMedium" style={styles.greetingName}>
+                {customerName ? `${customerName.split(' ')[0]} 👋` : 'Guest 👋'}
               </Text>
-              {!isSearching && nearbyStores.length > 0 && (
-                <Button
-                  mode="text"
-                  onPress={() => loadNearbyStores()}
-                  disabled={loadingNearby}
-                  compact
-                >
-                  {loadingNearby ? 'Loading...' : 'Refresh'}
-                </Button>
+            </View>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{ uri: `https://api.dicebear.com/7.x/avataaars/png?seed=${customerName || 'Guest'}` }}
+                style={styles.avatar}
+              />
+            </View>
+          </View>
+
+          <GlassCard style={styles.searchCard}>
+            <View style={styles.searchContent}>
+              <View style={styles.inputRow}>
+                <Text style={styles.searchIcon}>🔍</Text>
+                <TextInput
+                  value={merchantName}
+                  onChangeText={setMerchantName}
+                  placeholder="Where are you shopping?"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  style={styles.searchInput}
+                  underlineColor="transparent"
+                  activeUnderlineColor="transparent"
+                  textColor={theme.colors.text}
+                  disabled={loading}
+                />
+              </View>
+              {merchantName.length > 0 && (
+                <ModernButton
+                  title="Find Best Card"
+                  onPress={handleFindCard}
+                  loading={loading}
+                  style={styles.findButton}
+                />
               )}
             </View>
-            {loadingNearby && nearbyStores.length === 0 && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" />
-                <Text variant="bodySmall" style={styles.loadingText}>
-                  {isSearching ? 'Searching nearby places...' : 'Finding nearby stores...'}
-                </Text>
-              </View>
-            )}
-            {!loadingNearby && isSearching && nearbyStores.length === 0 && (
-              <View style={styles.emptyContainer}>
-                <Text variant="bodyMedium" style={styles.emptyText}>
-                  No places found for "{searchQuery}"
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={handleClearSearch}
-                  style={styles.clearButton}
-                >
-                  Clear Search
-                </Button>
-              </View>
-            )}
-            {!isSearching && nearbyStores.length === 0 && !loadingNearby && (
-              <View style={styles.emptyContainer}>
-                <Text variant="bodySmall" style={styles.emptyText}>
-                  Enable location to see nearby stores
-                </Text>
-              </View>
-            )}
-            <View style={styles.quickSelectGrid}>
-              {(nearbyStores.length > 0 ? nearbyStores : (!isSearching ? POPULAR_STORES : [])).map((store) => (
-                <TouchableOpacity
-                  key={store.name}
-                  onPress={() => handleQuickSelect(store.name)}
-                  style={styles.quickSelectItem}
-                >
-                  <Card style={styles.quickSelectCard}>
-                    <Card.Content style={styles.quickSelectContent}>
-                      <Text style={styles.quickSelectIcon}>{store.icon}</Text>
-                      <Text variant="bodySmall" style={styles.quickSelectName}>
-                        {store.name}
-                      </Text>
-                    </Card.Content>
-                  </Card>
+          </GlassCard>
+
+          {!recommendation && !loading && (
+            <>
+              {/* Nearby Places Section */}
+              <View style={styles.nearbyHeader}>
+                <Text style={styles.sectionTitle}>NEARBY PLACES</Text>
+                <TouchableOpacity onPress={() => loadNearbyStores()}>
+                  <Text style={styles.refreshText}>🔄 Refresh</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        )}
-
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" />
-            <Text variant="bodyLarge" style={styles.loadingText}>
-              Finding your best card...
-            </Text>
-          </View>
-        )}
-
-        {recommendation && !loading && (
-          <View style={styles.resultsContainer}>
-            <View style={styles.resultsHeader}>
-              <Text variant="titleLarge" style={styles.resultsTitle}>
-                💳 Recommendations for {recommendation.merchant_name}
-              </Text>
-              <Button mode="text" onPress={handleReset}>
-                New Search
-              </Button>
-            </View>
-
-            {recommendation.categories_identified && recommendation.categories_identified.length > 0 && (
-              <View style={styles.categoriesContainer}>
-                {recommendation.categories_identified.map((cat, idx) => (
-                  <Chip key={idx} compact style={styles.categoryChip}>
-                    {cat}
-                  </Chip>
-                ))}
               </View>
-            )}
+              
+              <GlassCard style={styles.searchBarCard}>
+                <View style={styles.searchBarRow}>
+                  <Text style={styles.searchBarIcon}>📍</Text>
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search nearby places..."
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    style={styles.searchInputSmall}
+                    underlineColor="transparent"
+                    activeUnderlineColor="transparent"
+                    textColor={theme.colors.text}
+                    onSubmitEditing={handleSearch}
+                    returnKeyType="search"
+                    right={
+                      searchQuery ? (
+                        <TextInput.Icon
+                          icon="close"
+                          onPress={handleClearSearch}
+                          color="rgba(255, 255, 255, 0.7)"
+                        />
+                      ) : (
+                        <TextInput.Icon
+                          icon="magnify"
+                          onPress={handleSearch}
+                          color="rgba(255, 255, 255, 0.7)"
+                        />
+                      )
+                    }
+                  />
+                </View>
+              </GlassCard>
 
-            {recommendation.recommendations.map((rec, index) => {
-              const network = getNetworkBadge(rec.card_name);
-              return (
-                <Card
-                  key={rec.card_id}
-                  style={[
-                    styles.recommendationCard,
-                    index === 0 && styles.bestCard,
-                  ]}
-                >
-                  <Card.Content>
-                    {index === 0 && (
-                      <View style={styles.bestBadge}>
-                        <Text style={styles.bestBadgeText}>🏆 BEST CHOICE</Text>
-                      </View>
-                    )}
-                    
-                    <View style={styles.cardHeader}>
-                      <View style={styles.cardTitleRow}>
-                        <Text variant="titleMedium" style={styles.cardTitle}>
-                          {rec.card_name}
-                        </Text>
-                        <Chip
-                          compact
-                          style={[styles.networkChip, { backgroundColor: network.color + '20' }]}
-                          textStyle={{ color: network.color, fontSize: 10 }}
-                        >
-                          {network.label}
-                        </Chip>
-                      </View>
-                    </View>
+              {loadingNearby ? (
+                <View style={styles.loadingNearby}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.loadingNearbyText}>Finding nearby places...</Text>
+                </View>
+              ) : nearbyStores.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickSelectScroll}>
+                  {nearbyStores.map((store) => (
+                    <TouchableOpacity
+                      key={store.name}
+                      onPress={() => handleQuickSelect(store.name)}
+                      style={styles.quickSelectItem}
+                    >
+                      <GlassCard style={styles.quickSelectCard}>
+                        <Text style={styles.quickSelectIcon}>{store.icon}</Text>
+                      </GlassCard>
+                      <Text style={styles.quickSelectName}>{store.name}</Text>
+                      <Text style={styles.quickSelectCategory}>{store.category}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyNearby}>
+                  <Text style={styles.emptyNearbyText}>
+                    {isSearching ? 'No places found nearby' : 'Enable location to see nearby places'}
+                  </Text>
+                </View>
+              )}
 
-                    <View style={styles.rewardSection}>
-                      <View style={styles.rewardMain}>
-                        <Text variant="headlineMedium" style={styles.rewardRate}>
-                          {rec.reward_rate}%
-                        </Text>
-                        {rec.estimated_reward && (
-                          <Text variant="titleLarge" style={styles.rewardAmount}>
-                            ${rec.estimated_reward.toFixed(2)}
+              <Text style={styles.sectionTitle}>POPULAR MERCHANTS</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickSelectScroll}>
+                {POPULAR_STORES.map((store) => (
+                  <TouchableOpacity
+                    key={store.name}
+                    onPress={() => handleQuickSelect(store.name)}
+                    style={styles.quickSelectItem}
+                  >
+                    <GlassCard style={styles.quickSelectCard}>
+                      <Text style={styles.quickSelectIcon}>{store.icon}</Text>
+                    </GlassCard>
+                    <Text style={styles.quickSelectName}>{store.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Finding your best card...</Text>
+            </View>
+          )}
+
+          {recommendation && !loading && (
+            <View style={styles.resultsContainer}>
+              <View style={styles.resultsHeader}>
+                <Text variant="titleLarge" style={styles.resultsTitle}>
+                  Best for "{recommendation.merchant_name}"
+                </Text>
+                <TouchableOpacity onPress={handleReset}>
+                  <Text style={styles.resetText}>New Search</Text>
+                </TouchableOpacity>
+              </View>
+
+              {recommendation.recommendations.map((rec, index) => {
+                const network = getNetworkBadge(rec.card_name);
+                const isBest = index === 0;
+
+                return (
+                  <GlassCard
+                    key={rec.card_id}
+                    style={[
+                      styles.recommendationCard,
+                      isBest && styles.bestCard,
+                    ]}
+                  >
+                    <View style={styles.cardContent}>
+                      {isBest && (
+                        <View style={styles.bestBadge}>
+                          <Text style={styles.bestBadgeText}>🏆 BEST CHOICE</Text>
+                        </View>
+                      )}
+
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardInfo}>
+                          <Text variant="titleMedium" style={styles.cardName}>
+                            {rec.card_name}
                           </Text>
-                        )}
+                          <Text style={styles.cardLastFour}>•••• 0000</Text>
+                        </View>
+                        <View style={styles.networkBadge}>
+                          <Text style={[styles.networkText, { color: network.color }]}>{network.label}</Text>
+                        </View>
                       </View>
-                      <Text variant="bodyMedium" style={styles.reason}>
-                        {rec.reward_details}
-                      </Text>
-                    </View>
 
-                    {rec.comparison && (
-                      <View style={styles.comparisonSection}>
-                        <Text variant="bodySmall" style={styles.comparison}>
-                          💡 {rec.comparison}
-                        </Text>
+                      <View style={styles.rewardRow}>
+                        <View style={styles.rewardInfo}>
+                          <Text style={styles.rewardRate}>{rec.reward_rate}%</Text>
+                          <Text style={styles.rewardLabel}>Cash Back</Text>
+                        </View>
+                        <View style={styles.rewardDetails}>
+                          <Text style={styles.reasonText}>{rec.reward_details}</Text>
+                        </View>
                       </View>
-                    )}
-                  </Card.Content>
-                </Card>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+                    </View>
+                  </GlassCard>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 24,
+    paddingBottom: 100,
   },
   header: {
-    marginBottom: 20,
-  },
-  greeting: {
-    marginBottom: 4,
-  },
-  title: {
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  searchCard: {
-    marginBottom: 24,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  findButton: {
-    marginTop: 8,
-    borderRadius: 12,
-  },
-  findButtonContent: {
-    paddingVertical: 8,
-  },
-  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
+  },
+  greetingLabel: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+  },
+  greetingName: {
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  searchCard: {
+    marginBottom: 32,
+    borderRadius: 24,
+  },
+  searchContent: {
+    padding: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    fontSize: 20,
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    height: 40,
+    fontSize: 16,
+  },
+  findButton: {
+    marginTop: 16,
   },
   sectionTitle: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
     fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 16,
   },
-  quickSelectGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  quickSelectScroll: {
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
   quickSelectItem: {
-    width: '30%',
+    alignItems: 'center',
+    marginRight: 20,
   },
   quickSelectCard: {
-    elevation: 1,
-  },
-  quickSelectContent: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   quickSelectIcon: {
-    fontSize: 32,
-    marginBottom: 4,
+    fontSize: 24,
   },
   quickSelectName: {
-    textAlign: 'center',
-    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
   },
   loadingContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+    padding: 40,
   },
   loadingText: {
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 16,
-    color: '#666',
   },
   resultsContainer: {
     marginTop: 8,
@@ -520,114 +497,146 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resultsTitle: {
-    flex: 1,
     fontWeight: 'bold',
+    color: theme.colors.text,
+    fontSize: 18,
   },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  categoryChip: {
-    backgroundColor: '#e3f2fd',
+  resetText: {
+    color: theme.colors.primary,
   },
   recommendationCard: {
     marginBottom: 16,
-    elevation: 2,
+    borderRadius: 20,
   },
   bestCard: {
-    borderWidth: 2,
-    borderColor: '#FFD700',
+    borderColor: 'rgba(234, 179, 8, 0.5)', // Yellow border
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+  },
+  cardContent: {
+    padding: 20,
   },
   bestBadge: {
-    backgroundColor: '#FFD700',
+    backgroundColor: 'rgba(234, 179, 8, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     alignSelf: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
   },
   bestBadgeText: {
+    color: '#fbbf24',
     fontWeight: 'bold',
     fontSize: 12,
-    color: '#333',
   },
   cardHeader: {
-    marginBottom: 16,
-  },
-  cardTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardName: {
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    fontSize: 18,
     marginBottom: 4,
   },
-  cardTitle: {
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
+  cardLastFour: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
   },
-  networkChip: {
-    height: 20,
+  networkBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  cardNumber: {
-    color: '#666',
+  networkText: {
+    fontWeight: 'bold',
+    fontSize: 12,
   },
-  rewardSection: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  rewardMain: {
+  rewardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+  },
+  rewardInfo: {
+    marginRight: 24,
   },
   rewardRate: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#2e7d32',
+    color: '#4ade80', // Green 400
   },
-  rewardAmount: {
-    fontWeight: 'bold',
-    color: '#1976d2',
+  rewardLabel: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
   },
-  reason: {
-    color: '#666',
-  },
-  comparisonSection: {
-    backgroundColor: '#fff3cd',
-    padding: 12,
-    borderRadius: 8,
-  },
-  comparison: {
-    color: '#856404',
-    lineHeight: 18,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  searchInput: {
+  rewardDetails: {
     flex: 1,
   },
-  searchButton: {
-    marginTop: 0,
+  reasonText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    lineHeight: 20,
   },
-  emptyContainer: {
+  nearbyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  refreshText: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  searchBarCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+  },
+  searchBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  searchBarIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  searchInputSmall: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    height: 36,
+    fontSize: 14,
+  },
+  loadingNearby: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    padding: 20,
   },
-  emptyText: {
-    color: '#666',
-    marginBottom: 16,
+  loadingNearbyText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginLeft: 8,
+    fontSize: 12,
+  },
+  emptyNearby: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyNearbyText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
     textAlign: 'center',
   },
-  clearButton: {
-    marginTop: 8,
+  quickSelectCategory: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });
-
